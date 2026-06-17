@@ -158,13 +158,14 @@
   #tour .ghost { background:transparent; border:0; color: var(--text-mute); font-family:inherit; font-size:12px; cursor:pointer; }
   #tour .ghost:hover { color: var(--text); }
 
-  #tourFab {
-    position: fixed; bottom: 16px; left: 16px; z-index: 20;
-    display:none; align-items:center; gap:7px;
-    background: var(--tour); color:#04243a; border:0; border-radius: 10px;
-    font-family:inherit; font-size:12.5px; font-weight:600; padding: 10px 14px; cursor:pointer;
-    box-shadow: 0 8px 24px var(--tour-soft);
+  #fabs { position: fixed; bottom: 16px; left: 16px; z-index: 20; display: flex; gap: 10px; }
+  #tourFab, #coachFab {
+    display: inline-flex; align-items: center; gap: 7px; border: 0; border-radius: 10px;
+    font-family: inherit; font-size: 12.5px; font-weight: 600; padding: 10px 14px; cursor: pointer;
   }
+  #tourFab { background: var(--tour); color: #04243a; box-shadow: 0 8px 24px var(--tour-soft); }
+  #coachFab { background: var(--coach); color: #3a2700; box-shadow: 0 8px 24px var(--coach-soft); }
+  #tourFab:hover, #coachFab:hover { filter: brightness(1.08); }
 
   .hint { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 15;
     font-size: 11px; color: var(--text-mute); font-family:"JetBrains Mono",monospace;
@@ -188,7 +189,9 @@
   #resetBtn:active { transform: translateY(0) scale(0.97); }
   #resetBtn.flash { animation: resetPulse 0.4s ease; }
   @keyframes resetPulse { 0%{ box-shadow:0 0 0 0 rgba(240,70,58,0.6);} 100%{ box-shadow:0 0 0 16px rgba(240,70,58,0);} }
-  #helpBtn { width: 42px; height: 42px; padding: 0; justify-content: center; font-size: 17px; border-radius: 11px; }
+  #helpBtn { width: 42px; height: 42px; padding: 0; justify-content: center; font-size: 18px; font-weight: 700; border-radius: 11px;
+    background: var(--coach); border-color: #ffd27a; color: #3a2700; box-shadow: 0 8px 24px var(--coach-soft); }
+  #helpBtn:hover { filter: brightness(1.08); }
 
   /* ---- Help modal ---- */
   #helpModal {
@@ -279,7 +282,7 @@
     #graph { width: calc(100vw - 24px); left: 12px; right: auto; bottom: 12px; height: 132px; }
     #tour { width: calc(100vw - 24px); left: 12px; transform: none; bottom: 156px; padding: 14px 16px; }
     #tour p { font-size: 12.5px; }
-    #tourFab { bottom: 156px; }
+    #fabs { bottom: 156px; left: 12px; }
     #obsCaption { top: 64px; width: max-content; max-width: calc(100vw - 24px); font-size: 12px; }
     #topRight { top: 14px; right: 14px; gap: 8px; }
     .cornerBtn { padding: 8px 12px; font-size: 12px; }
@@ -414,7 +417,10 @@
   <div class="glegend"><span><i style="background:var(--accent)"></i>theory I(x)</span><span><i style="background:#5ad7c0"></i>detected hits</span></div>
 </div>
 
-<button id="tourFab">✦ Guided tour</button>
+<div id="fabs">
+  <button id="tourFab">✦ Guided tour</button>
+  <button id="coachFab">☞ Walkthrough</button>
+</div>
 
 <div id="tour">
   <div class="ttop">
@@ -965,6 +971,7 @@ const TOUR = [
 let tourIdx = 0, tourActive = true;
 const tourEl = document.getElementById('tour');
 const tourFab = document.getElementById('tourFab');
+const fabsEl = document.getElementById('fabs');
 function renderTour(){
   const t = TOUR[tourIdx];
   document.getElementById('tourStep').textContent = `STEP ${tourIdx+1} / ${TOUR.length}`;
@@ -976,9 +983,10 @@ function renderTour(){
   TOUR.forEach((_,i)=>{ const s=document.createElement('span'); if(i===tourIdx)s.className='on'; dots.appendChild(s); });
   t.apply();
 }
-function startTour(){ tourActive=true; tourIdx=0; tourEl.style.display='block'; tourFab.style.display='none'; renderTour(); }
+function startTour(){ tourActive=true; tourIdx=0; tourEl.style.display='block'; fabsEl.style.display='none'; renderTour(); }
 function endTour(){
-  tourActive=false; tourEl.style.display='none'; tourFab.style.display='flex';
+  tourActive=false; tourEl.style.display='none';
+  if(!coachEl.classList.contains('active')) fabsEl.style.display='flex';
   // Clean handoff to the sandbox: stop the runaway stream and restore the natural
   // interference state (observer off) — but DON'T wipe what the user just built.
   streaming=false;
@@ -991,6 +999,7 @@ document.getElementById('tourNext').addEventListener('click', ()=>{ if(tourIdx<T
 document.getElementById('tourPrev').addEventListener('click', ()=>{ if(tourIdx>0){tourIdx--;renderTour();} });
 document.getElementById('tourSkip').addEventListener('click', endTour);
 tourFab.addEventListener('click', ()=>{ endCoach(true); startTour(); });
+document.getElementById('coachFab').addEventListener('click', ()=>{ endTour(); startCoach(); });
 
 // ============================================================= COACHMARK FTUI (orange)
 // A first-time walkthrough that points to the actual buttons to press, in order,
@@ -1077,13 +1086,13 @@ function renderCoach(){
   positionCoach();                       // position now (don't depend on rAF timing)
   requestAnimationFrame(positionCoach);  // and correct after any scroll/layout settle
 }
-function startCoach(){ endTour(); coachIdx=0; coachEl.classList.add('active'); tourFab.style.display='none'; renderCoach(); }
+function startCoach(){ endTour(); coachIdx=0; coachEl.classList.add('active'); fabsEl.style.display='none'; renderCoach(); }
 function nextCoach(){ if(coachIdx<COACH.length-1){ coachIdx++; renderCoach(); } else endCoach(); }
 function prevCoach(){ if(coachIdx>0){ coachIdx--; renderCoach(); } }
 function endCoach(quiet){
   if(coachTarget && coachAdvancer){ coachTarget.removeEventListener('click', coachAdvancer); coachTarget=null; }
   coachEl.classList.remove('active');
-  tourFab.style.display='flex';
+  fabsEl.style.display='flex';
   try{ localStorage.setItem('ds_ftui_done','1'); }catch(e){}
   if(!quiet){ /* leave the experiment in whatever state the user reached */ }
 }
@@ -1241,7 +1250,7 @@ sizeGraph();
 // Returning visitors land straight in the sandbox (the story tour is on the FAB / Help).
 let ftuiDone = false;
 try{ ftuiDone = !!localStorage.getItem('ds_ftui_done'); }catch(e){}
-if(ftuiDone){ tourFab.style.display='flex'; } else { startCoach(); }
+if(ftuiDone){ fabsEl.style.display='flex'; } else { startCoach(); }
 requestAnimationFrame(tick);
 </script>
 </body>
