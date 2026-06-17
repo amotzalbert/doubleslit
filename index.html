@@ -31,6 +31,10 @@
     --danger: #f87171;
     --coach: #ffb020;
     --coach-soft: rgba(255, 176, 32, 0.18);
+    --tour: #5cb8ff;
+    --tour-soft: rgba(92, 184, 255, 0.22);
+    --go: #4fdd8f;
+    --stopred: #ef4438;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -98,6 +102,12 @@
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .btn:disabled { opacity: 0.4; cursor: default; }
 
+  /* Fire / Stream action button: green to GO, red to STOP */
+  #fireBtn { background: linear-gradient(180deg, #5fe39a, #34c878); border-color: #7eecb0; color: #05311e; }
+  #fireBtn:hover { background: linear-gradient(180deg, #6fe9a7, #43d186); border-color: #7eecb0; }
+  #fireBtn.stop { background: linear-gradient(180deg, #ff6b5e, var(--stopred)); border-color: #ff8a80; color: #fff; }
+  #fireBtn.stop:hover { background: linear-gradient(180deg, #ff7c70, #f5564a); border-color: #ff8a80; }
+
   .toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 9px; background: rgba(0,0,0,0.18); cursor: pointer; transition: all 0.15s; }
   .toggle:hover { border-color: #3a4360; }
   .toggle.on { border-color: var(--warn); background: rgba(251,191,36,0.08); }
@@ -135,10 +145,12 @@
     padding: 16px 20px; backdrop-filter: blur(16px); box-shadow: 0 18px 50px rgba(0,0,0,0.55);
   }
   #tour .ttop { display:flex; align-items:center; gap:10px; margin-bottom: 7px; }
-  #tour .tstep { font-family:"JetBrains Mono",monospace; font-size: 10.5px; color: var(--accent); letter-spacing:0.08em; }
+  #tour .tstep { font-family:"JetBrains Mono",monospace; font-size: 10.5px; color: var(--tour); letter-spacing:0.08em; }
   #tour .tdots { display:flex; gap:5px; margin-left:auto; }
   #tour .tdots span { width:6px; height:6px; border-radius:50%; background:#2a3146; }
-  #tour .tdots span.on { background: var(--accent); }
+  #tour .tdots span.on { background: var(--tour); }
+  #tour .btn.primary { background: var(--tour); border-color: var(--tour); color: #04243a; }
+  #tour .btn:hover { border-color: var(--tour); }
   #tour h3 { margin: 0 0 5px; font-size: 16px; }
   #tour p { margin: 0 0 12px; font-size: 13px; line-height: 1.55; color: var(--text-dim); }
   #tour .trow { display:flex; gap: 8px; align-items:center; }
@@ -149,9 +161,9 @@
   #tourFab {
     position: fixed; bottom: 16px; left: 16px; z-index: 20;
     display:none; align-items:center; gap:7px;
-    background: var(--accent); color:#fff; border:0; border-radius: 10px;
-    font-family:inherit; font-size:12.5px; font-weight:500; padding: 10px 14px; cursor:pointer;
-    box-shadow: 0 8px 24px var(--accent-soft);
+    background: var(--tour); color:#04243a; border:0; border-radius: 10px;
+    font-family:inherit; font-size:12.5px; font-weight:600; padding: 10px 14px; cursor:pointer;
+    box-shadow: 0 8px 24px var(--tour-soft);
   }
 
   .hint { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 15;
@@ -339,7 +351,7 @@
 
     <div class="hfoot">
       <button class="btn" id="helpCoach" style="flex:0 0 auto;padding:9px 18px;border-color:var(--coach);color:var(--coach)">◉ Show me the buttons</button>
-      <button class="btn primary" id="helpTour" style="flex:0 0 auto;padding:9px 18px">✦ Guided story tour</button>
+      <button class="btn primary" id="helpTour" style="flex:0 0 auto;padding:9px 18px;background:var(--tour);border-color:var(--tour);color:#04243a">✦ Guided story tour</button>
       <button class="btn" id="helpGotIt" style="flex:0 0 auto;padding:9px 18px">Got it</button>
     </div>
   </div>
@@ -392,6 +404,7 @@
     <div class="chip on" id="chipField">Wave field</div>
     <div class="chip on" id="chipTheory">Theory curve</div>
     <div class="chip on" id="chipPlay">Time ▶</div>
+    <div class="chip on" id="chipSound">Sound ♪</div>
   </div>
 </div>
 
@@ -439,8 +452,11 @@ const state = {
   showField: true,
   showTheory: true,
   playing: true,
+  sound: true,
   fired: 0,
 };
+// Web-Audio state (declared early so recompute() can safely reference beamOn)
+let actx=null, master=null, beamGain=null, beamFilter=null, lfoGain=null, noiseBuf=null, beamOn=false;
 const SCREEN_HALF = 6.5;   // physical half-extent sampled along x (screen z-range)
 const BEAM_HALF_Y = 1.9;   // vertical spread of arrivals
 
@@ -812,6 +828,7 @@ function recompute(){            // call after any physics param change
   fieldUniforms.uObs.value = state.observer ? 1 : 0;
   screenLabel.position.x = state.L; counterLabel.position.x = state.L;
   buildCDF();
+  if(beamOn) setBeam(true);          // refresh beam pitch when wavelength changes
 }
 
 // ---- panel controls
@@ -849,7 +866,7 @@ function setMode(m){
 
 let streaming = false;
 document.getElementById('fireBtn').addEventListener('click', ()=>{
-  if(state.mode==='single'){ for(let i=0;i<1;i++) recordHit(sampleX()); }
+  if(state.mode==='single'){ recordHit(sampleX()); fireBlip(); }
   else if(state.mode==='stream'){ streaming=!streaming; document.getElementById('fireBtn').textContent = streaming?'Stop ◼':'Start stream ▸'; }
 });
 // Prominent reset (top-right) — wipes the detection screen
@@ -898,6 +915,7 @@ function bindChip(id, key, onChange){
 bindChip('chipField','showField', ()=>{ field.visible = state.showField; });
 bindChip('chipTheory','showTheory', ()=>{});
 bindChip('chipPlay','playing', ()=>{ document.getElementById('chipPlay').textContent = state.playing?'Time ▶':'Time ⏸'; });
+bindChip('chipSound','sound', ()=>{ ensureAudio(); document.getElementById('chipSound').textContent = state.sound?'Sound ♪':'Muted'; });
 
 // ============================================================= SIDE GRAPH
 const gCanvas = document.getElementById('graphCanvas');
@@ -1083,7 +1101,63 @@ function flyTo(pos, target){
               fromT:controls.target.clone(), toT:target.clone(), t:0 };
 }
 
+// ============================================================= AUDIO (synthesized, no files)
+// A discrete "blip" per single photon, and a continuous beam/stream sound while
+// firing rapidly (plus a soft wave hum in Wave mode). Pitch tracks wavelength.
+function ensureAudio(){
+  if(actx){ if(actx.state==='suspended') actx.resume(); return; }
+  const AC = window.AudioContext || window.webkitAudioContext; if(!AC) return;
+  actx = new AC();
+  master = actx.createGain(); master.gain.value = 0.85; master.connect(actx.destination);
+  noiseBuf = actx.createBuffer(1, actx.sampleRate*2, actx.sampleRate);
+  const d = noiseBuf.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i] = Math.random()*2 - 1;
+  // continuous beam: looped noise → bandpass → gain, with a tremolo LFO on the gain
+  const src = actx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+  beamFilter = actx.createBiquadFilter(); beamFilter.type='bandpass'; beamFilter.frequency.value=650; beamFilter.Q.value=0.9;
+  beamGain = actx.createGain(); beamGain.gain.value = 0;
+  src.connect(beamFilter).connect(beamGain).connect(master);
+  const lfo = actx.createOscillator(); lfo.type='sine'; lfo.frequency.value=13;
+  lfoGain = actx.createGain(); lfoGain.gain.value = 0;
+  lfo.connect(lfoGain).connect(beamGain.gain);
+  src.start(); lfo.start();
+}
+function beamFreqForLambda(){ return 380 + (700 - state.lambdaNm) * 1.6; }   // blue → higher
+function setBeam(on){
+  if(!actx) return;
+  const t = actx.currentTime, isStream = state.mode==='stream';
+  if(on){
+    beamGain.gain.cancelScheduledValues(t);
+    beamGain.gain.setTargetAtTime(isStream ? 0.11 : 0.04, t, 0.07);
+    lfoGain.gain.setTargetAtTime(isStream ? 0.05 : 0.0, t, 0.07);
+    beamFilter.frequency.setTargetAtTime(beamFreqForLambda() * (isStream ? 1.2 : 0.8), t, 0.1);
+  } else {
+    beamGain.gain.setTargetAtTime(0, t, 0.1);
+    lfoGain.gain.setTargetAtTime(0, t, 0.1);
+  }
+}
+function fireBlip(){
+  if(!actx || !state.sound) return;
+  const t = actx.currentTime;
+  const base = 1250 - (state.lambdaNm - 400) * 1.1;            // pitch tracks colour
+  const o = actx.createOscillator(); o.type='triangle';
+  o.frequency.setValueAtTime(base, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(120, base*0.45), t+0.12);
+  const g = actx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(0.22, t+0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, t+0.16);
+  o.connect(g).connect(master); o.start(t); o.stop(t+0.18);
+  // crisp impact tick
+  const nb = actx.createBufferSource(); nb.buffer = noiseBuf;
+  const hp = actx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=2200;
+  const ng = actx.createGain(); ng.gain.setValueAtTime(0.13, t); ng.gain.exponentialRampToValueAtTime(0.0001, t+0.05);
+  nb.connect(hp).connect(ng).connect(master); nb.start(t); nb.stop(t+0.06);
+}
+addEventListener('pointerdown', ensureAudio);   // unlock/resume audio on first gesture
+
 // ============================================================= LOOP
+const fireBtnEl = document.getElementById('fireBtn');
 let last = performance.now(), streamAcc = 0;
 function tick(now){
   const dt = Math.min(0.05, (now-last)/1000); last = now;
@@ -1121,6 +1195,15 @@ function tick(now){
   ring2.material.opacity = Math.min(1, base + ring2Flash);
   ring1.scale.setScalar(1 + ring1Flash*0.55);
   ring2.scale.setScalar(1 + ring2Flash*0.55);
+
+  // fire button turns red whenever it's a "Stop" action, green otherwise
+  fireBtnEl.classList.toggle('stop', fireBtnEl.textContent.indexOf('Stop')===0);
+
+  // continuous beam/stream sound: on during wave mode or active stream
+  if(actx){
+    const want = state.sound && (state.mode==='wave' || (state.mode==='stream' && streaming));
+    if(want!==beamOn){ beamOn=want; setBeam(want); }
+  }
 
   // emitter pulse in particle modes
   emitterGlow.scale.setScalar(state.mode==='wave' ? 1 : (1+0.25*Math.sin(now*0.012)));
