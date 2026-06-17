@@ -549,7 +549,9 @@ labelRenderer.domElement.style.top = '0';
 labelRenderer.domElement.style.pointerEvents = 'none';
 container.appendChild(labelRenderer.domElement);
 
-const controls = new OrbitControls(camera, labelRenderer.domElement);
+// Attach to the WebGL canvas — the CSS2D label overlay above it is pointer-events:none,
+// so mouse events pass through to here. (Attaching to the overlay broke navigation.)
+const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true; controls.dampingFactor = 0.08;
 controls.minDistance = 6; controls.maxDistance = 60;
 controls.target.set(2, 0.5, 0);
@@ -705,7 +707,32 @@ hmCanvas.width = HM_W; hmCanvas.height = HM_H;
 const hmCtx = hmCanvas.getContext('2d');
 function clearHeatmap(){ hmCtx.clearRect(0,0,HM_W,HM_H); hmTex.needsUpdate = true; }
 const hmTex = new THREE.CanvasTexture(hmCanvas);
+// Wave mode: paint the continuous interference pattern directly on the screen.
+const wvCanvas = document.createElement('canvas');
+wvCanvas.width = HM_W; wvCanvas.height = HM_H;
+const wvCtx = wvCanvas.getContext('2d');
+const wvTex = new THREE.CanvasTexture(wvCanvas);
+function paintWaveScreen(){
+  const I = new Float32Array(HM_W); let imax = 0;
+  for(let i=0;i<HM_W;i++){
+    const x = (i/(HM_W-1)*2 - 1) * SCREEN_HALF;     // same mapping as recordHit
+    const v = Math.max(0, intensity(x)); I[i] = v; if(v>imax) imax = v;
+  }
+  const c = beamColor;
+  for(let i=0;i<HM_W;i++){
+    const b = imax>0 ? I[i]/imax : 0;
+    wvCtx.fillStyle = `rgb(${(c.r*255*b)|0},${(c.g*255*b)|0},${(c.b*255*b)|0})`;
+    wvCtx.fillRect(i, 0, 1, HM_H);
+  }
+  wvTex.needsUpdate = true;
+}
 const screenMat = new THREE.MeshBasicMaterial({ map:hmTex, transparent:true });
+function refreshScreen(){     // choose what the screen shows: wave pattern vs accumulated hits
+  const wave = state.mode==='wave';
+  screenMat.map = wave ? wvTex : hmTex;
+  screenMat.needsUpdate = true;
+  if(wave) paintWaveScreen();
+}
 const screenPlane = new THREE.Mesh(new THREE.PlaneGeometry(2*SCREEN_HALF, SLIT_HEIGHT+2.2), screenMat);
 screenPlane.rotation.y = -Math.PI/2;     // face -x
 scene.add(screenPlane);
@@ -835,6 +862,7 @@ function recompute(){            // call after any physics param change
   screenLabel.position.x = state.L; counterLabel.position.x = state.L;
   buildCDF();
   if(beamOn) setBeam(true);          // refresh beam pitch when wavelength changes
+  if(state.mode==='wave') paintWaveScreen();   // keep wall pattern in sync with params
 }
 
 // ---- panel controls
@@ -868,6 +896,7 @@ function setMode(m){
   if(m==='stream') fb.textContent = streaming ? 'Stop ◼' : 'Start stream ▸';
   // field is the wave visualization; show strongly in wave mode
   field.visible = state.showField && (m==='wave' || true);
+  refreshScreen();
 }
 
 let streaming = false;
@@ -911,6 +940,7 @@ function setObserver(on, opts={}){
   obsToggle.classList.toggle('on', on);
   fieldUniforms.uObs.value = on?1:0;
   buildCDF();
+  if(state.mode==='wave') paintWaveScreen();   // collapse/restore the wall pattern live
   if(changed && !opts.silent) showObsCaption(on);
 }
 
