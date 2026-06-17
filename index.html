@@ -29,6 +29,8 @@
     --ok: #34d399;
     --warn: #fbbf24;
     --danger: #f87171;
+    --coach: #ffb020;
+    --coach-soft: rgba(255, 176, 32, 0.18);
   }
   * { box-sizing: border-box; }
   html, body {
@@ -126,6 +128,7 @@
 
   /* ---- Tour overlay ---- */
   #tour {
+    display: none;
     position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
     width: min(560px, calc(100vw - 360px)); z-index: 30;
     background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
@@ -155,6 +158,93 @@
     font-size: 11px; color: var(--text-mute); font-family:"JetBrains Mono",monospace;
     background: rgba(6,8,15,0.5); border:1px solid var(--border); padding: 5px 12px; border-radius: 20px; pointer-events:none; }
 
+  /* ---- Top-right action cluster (Reset + Help) ---- */
+  #topRight { position: fixed; top: 16px; right: 16px; z-index: 22; display: flex; gap: 10px; align-items: center; }
+  .cornerBtn {
+    display: inline-flex; align-items: center; gap: 7px;
+    font-family: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+    padding: 10px 16px; border-radius: 11px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text); backdrop-filter: blur(12px);
+    transition: all 0.15s; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .cornerBtn:hover { transform: translateY(-1px); }
+  #resetBtn {
+    background: linear-gradient(180deg, #ff6b5e, #f0463a); border-color: #ff8a80; color: #fff;
+    box-shadow: 0 8px 26px rgba(240,70,58,0.45);
+  }
+  #resetBtn:hover { background: linear-gradient(180deg, #ff7c70, #ff5648); }
+  #resetBtn:active { transform: translateY(0) scale(0.97); }
+  #resetBtn.flash { animation: resetPulse 0.4s ease; }
+  @keyframes resetPulse { 0%{ box-shadow:0 0 0 0 rgba(240,70,58,0.6);} 100%{ box-shadow:0 0 0 16px rgba(240,70,58,0);} }
+  #helpBtn { width: 42px; height: 42px; padding: 0; justify-content: center; font-size: 17px; border-radius: 11px; }
+
+  /* ---- Help modal ---- */
+  #helpModal {
+    position: fixed; inset: 0; z-index: 40; display: none;
+    align-items: center; justify-content: center; padding: 24px;
+    background: rgba(4,6,12,0.66); backdrop-filter: blur(6px);
+  }
+  #helpModal.open { display: flex; }
+  .helpCard {
+    width: min(680px, 100%); max-height: calc(100vh - 48px); overflow-y: auto;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 18px;
+    padding: 26px 30px 30px; box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+  }
+  .helpCard .hClose { position: sticky; top: 0; float: right; margin: -8px -10px 0 0;
+    background: transparent; border: 0; color: var(--text-mute); font-size: 24px; line-height: 1; cursor: pointer; }
+  .helpCard .hClose:hover { color: var(--text); }
+  .helpCard h2 { margin: 0 0 4px; font-size: 21px; }
+  .helpCard .hsub { margin: 0 0 20px; font-size: 13px; color: var(--text-mute); font-family:"JetBrains Mono",monospace; }
+  .helpCard h4 { margin: 20px 0 8px; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+  .helpCard p { margin: 0 0 10px; font-size: 14px; line-height: 1.6; color: var(--text-dim); }
+  .helpCard ul { margin: 0 0 10px; padding-left: 0; list-style: none; }
+  .helpCard li { font-size: 13.5px; line-height: 1.55; color: var(--text-dim); margin-bottom: 8px; padding-left: 18px; position: relative; }
+  .helpCard li::before { content: "›"; position: absolute; left: 2px; color: var(--accent); font-weight: 700; }
+  .helpCard b { color: var(--text); font-weight: 600; }
+  .helpCard .hkey { font-family:"JetBrains Mono",monospace; font-size: 12px; background: rgba(124,92,252,0.16);
+    border:1px solid var(--border); border-radius: 6px; padding: 1px 7px; color: var(--text); white-space: nowrap; }
+  .helpCard .hfoot { margin-top: 22px; display:flex; gap: 10px; flex-wrap: wrap; }
+  .helpCard .hfoot .btn { flex: 0 0 auto; }
+
+  /* ---- Orange coachmark walkthrough (FTUI) ---- */
+  #coach { display: none; }
+  #coach.active { display: block; }
+  #coachSpot {
+    position: fixed; z-index: 36; border-radius: 12px; pointer-events: none;
+    box-shadow: 0 0 0 9999px rgba(6,8,15,0.66), 0 0 0 3px var(--coach), 0 0 24px 5px rgba(255,176,32,0.5);
+    transition: top .28s ease, left .28s ease, width .28s ease, height .28s ease;
+    animation: coachPulse 1.5s ease-in-out infinite;
+  }
+  @keyframes coachPulse {
+    0%,100% { box-shadow: 0 0 0 9999px rgba(6,8,15,0.66), 0 0 0 3px var(--coach), 0 0 20px 3px rgba(255,176,32,0.4); }
+    50%     { box-shadow: 0 0 0 9999px rgba(6,8,15,0.66), 0 0 0 3px var(--coach), 0 0 34px 9px rgba(255,176,32,0.75); }
+  }
+  #coachSpot.nospot { box-shadow: 0 0 0 9999px rgba(6,8,15,0.74); animation: none; border: 0; }
+  #coachTip {
+    position: fixed; z-index: 37; width: 290px; max-width: calc(100vw - 32px);
+    background: linear-gradient(180deg, #2b2113, #1b150c);
+    border: 1px solid var(--coach); border-radius: 14px; padding: 15px 17px;
+    box-shadow: 0 20px 54px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,176,32,0.15);
+    transition: top .28s ease, left .28s ease;
+  }
+  #coachTip .cstep { font-family:"JetBrains Mono",monospace; font-size: 10.5px; letter-spacing: 0.09em; color: var(--coach); margin-bottom: 5px; display:flex; align-items:center; gap:8px; }
+  #coachTip .cdots { display:flex; gap:4px; margin-left:auto; }
+  #coachTip .cdots span { width:5px; height:5px; border-radius:50%; background:#5a4a28; }
+  #coachTip .cdots span.on { background: var(--coach); }
+  #coachTip h4 { margin: 0 0 5px; font-size: 15px; color: #fff; }
+  #coachTip p { margin: 0 0 13px; font-size: 12.5px; line-height: 1.5; color: #ead9bb; }
+  #coachTip .crow { display: flex; align-items: center; gap: 8px; }
+  #coachTip .cspacer { flex: 1; }
+  #coachTip .cskip { background: transparent; border: 0; color: #a3895c; font-family: inherit; font-size: 11.5px; cursor: pointer; padding:0; }
+  #coachTip .cskip:hover { color: var(--coach); }
+  #coachTip .cbtn { font-family: inherit; font-size: 12px; font-weight: 600; border-radius: 8px; cursor: pointer; padding: 7px 15px; border: 1px solid var(--coach); transition: all .12s; }
+  #coachTip .cbtn.ghost { background: transparent; color: var(--coach); }
+  #coachTip .cbtn.ghost:disabled { opacity: 0.35; cursor: default; }
+  #coachTip .cbtn.solid { background: linear-gradient(180deg, #ffc758, #ffab1f); color: #3a2700; border-color: #ffd27a; }
+  #coachTip .cbtn.solid:hover { background: linear-gradient(180deg, #ffd06d, #ffb633); }
+  #coachTip .ctap { display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--coach); margin-bottom:11px; font-weight:600; }
+  #coachTip .ctap.hide { display:none; }
+
   /* ---- Observer measurement caption ---- */
   #obsCaption {
     position: fixed; top: 56px; left: 50%; transform: translateX(-50%) translateY(-8px);
@@ -178,7 +268,13 @@
     #tour { width: calc(100vw - 24px); left: 12px; transform: none; bottom: 156px; padding: 14px 16px; }
     #tour p { font-size: 12.5px; }
     #tourFab { bottom: 156px; }
-    #obsCaption { width: max-content; max-width: calc(100vw - 24px); font-size: 12px; }
+    #obsCaption { top: 64px; width: max-content; max-width: calc(100vw - 24px); font-size: 12px; }
+    #topRight { top: 14px; right: 14px; gap: 8px; }
+    .cornerBtn { padding: 8px 12px; font-size: 12px; }
+    #resetBtn span.full { display: none; }
+    #helpBtn { width: 38px; height: 38px; font-size: 16px; }
+    .helpCard { padding: 22px 20px 26px; }
+    #coachTip { width: calc(100vw - 24px); }
   }
 </style>
 </head>
@@ -186,6 +282,68 @@
 <div id="scene"></div>
 <div class="hint">drag to orbit · scroll to zoom</div>
 <div id="obsCaption"><span class="dot"></span><span id="obsCaptionText"></span></div>
+
+<div id="topRight">
+  <button id="resetBtn" class="cornerBtn" title="Clear the detection screen">⟲ <span class="full">Reset screen</span></button>
+  <button id="helpBtn" class="cornerBtn" title="How this works" aria-label="Help">?</button>
+</div>
+
+<div id="coach">
+  <div id="coachSpot"></div>
+  <div id="coachTip">
+    <div class="cstep"><span id="coachStep">STEP 1</span><span class="cdots" id="coachDots"></span></div>
+    <h4 id="coachTitle"></h4>
+    <p id="coachBody"></p>
+    <div class="ctap" id="coachTap">👆 tap the highlighted control</div>
+    <div class="crow">
+      <button class="cskip" id="coachSkip">Skip walkthrough</button>
+      <div class="cspacer"></div>
+      <button class="cbtn ghost" id="coachPrev">Back</button>
+      <button class="cbtn solid" id="coachNext">Next</button>
+    </div>
+  </div>
+</div>
+
+<div id="helpModal">
+  <div class="helpCard">
+    <button class="hClose" id="helpClose" aria-label="Close">×</button>
+    <h2>The double-slit experiment</h2>
+    <p class="hsub">wave · particle · the observer</p>
+
+    <p>Fire light (or any quantum particle) at a barrier with two narrow slits and watch where it lands on the screen behind. The result is the strangest in all of physics — and you can drive every part of it here.</p>
+
+    <h4>The three modes</h4>
+    <ul>
+      <li><b>Wave</b> — treat the light as a continuous wave. It goes through <b>both</b> slits and the two ripples interfere, painting bright and dark bands (an interference pattern) on the screen.</li>
+      <li><b>Particle</b> — fire one photon at a time. Each lands as a single random dot. Click <span class="hkey">Fire one</span> repeatedly.</li>
+      <li><b>Stream</b> — fire rapidly. Thousands of random dots pile up into… the exact same striped pattern. Every particle somehow "knows" about both slits.</li>
+    </ul>
+
+    <h4>The mystery: the observer</h4>
+    <p>Switch on the <b>which-path detector</b> to record which slit each particle goes through. The instant the path is known, the stripes vanish and the screen shows a single smooth blob. Stop watching, and the interference returns. Measurement itself changes the outcome.</p>
+
+    <h4>Controls</h4>
+    <ul>
+      <li><b>Wavelength</b> — color of the light. Shorter wavelength → tighter fringes.</li>
+      <li><b>Slit separation <i>d</i></b> — gap between slits. Wider <i>d</i> → tighter fringes.</li>
+      <li><b>Slit width <i>a</i></b> — how wide each slit is. Sets the broad brightness envelope.</li>
+      <li><b>Screen distance <i>L</i></b> — farther screen → wider-spaced fringes.</li>
+      <li><span class="hkey">⟲ Reset screen</span> (top-right) — wipe the accumulated hits and start fresh.</li>
+      <li>The <b>graph</b> (bottom-right) overlays the theoretical intensity curve on your actual detected hits — watch them converge.</li>
+    </ul>
+
+    <h4>Navigation</h4>
+    <ul>
+      <li><b>Drag</b> to orbit · <b>scroll</b> to zoom · the <b>Wave field / Theory curve / Time</b> chips toggle the ripple layer, the graph curve, and pause/play.</li>
+    </ul>
+
+    <div class="hfoot">
+      <button class="btn" id="helpCoach" style="flex:0 0 auto;padding:9px 18px;border-color:var(--coach);color:var(--coach)">◉ Show me the buttons</button>
+      <button class="btn primary" id="helpTour" style="flex:0 0 auto;padding:9px 18px">✦ Guided story tour</button>
+      <button class="btn" id="helpGotIt" style="flex:0 0 auto;padding:9px 18px">Got it</button>
+    </div>
+  </div>
+</div>
 
 <div id="panel">
   <h1>Double&nbsp;Slit</h1>
@@ -199,7 +357,6 @@
 
   <div class="btnrow" id="fireRow">
     <button class="btn primary" id="fireBtn">Fire ▸</button>
-    <button class="btn" id="clearBtn">Clear screen</button>
   </div>
 
   <div class="ctl">
@@ -608,12 +765,20 @@ function recordHit(x){
     if(Math.random()*(w1+w2) < w1) ring1Flash = 1; else ring2Flash = 1;
   }
 }
-function clearScreen(){
+function clearScreen(){          // instant wipe (the prominent Reset button)
+  hmFade = 0;
   ptAlpha.fill(0); ptLive = 0; ptHead = 0;
   ptGeo.attributes.aAlpha.needsUpdate = true;
   hist.fill(0); state.fired = 0;
   clearHeatmap();
   document.getElementById('hitCount').textContent = '0 hits';
+}
+let hmFade = 0;                  // >0 → the accumulated screen is dissolving (smooth transition)
+function softClear(){            // gentle dissolve used during the guided tour
+  hist.fill(0); state.fired = 0;
+  for(let i=0;i<MAX_PTS;i++) if(ptAlpha[i]>0.4) ptAlpha[i]=0.4;
+  ptGeo.attributes.aAlpha.needsUpdate = true;
+  hmFade = 1;
 }
 
 // ------------------------------------------------------------- labels
@@ -687,7 +852,23 @@ document.getElementById('fireBtn').addEventListener('click', ()=>{
   if(state.mode==='single'){ for(let i=0;i<1;i++) recordHit(sampleX()); }
   else if(state.mode==='stream'){ streaming=!streaming; document.getElementById('fireBtn').textContent = streaming?'Stop ◼':'Start stream ▸'; }
 });
-document.getElementById('clearBtn').addEventListener('click', clearScreen);
+// Prominent reset (top-right) — wipes the detection screen
+const resetBtn = document.getElementById('resetBtn');
+resetBtn.addEventListener('click', ()=>{
+  clearScreen();
+  resetBtn.classList.remove('flash'); void resetBtn.offsetWidth; resetBtn.classList.add('flash');
+});
+
+// Help modal
+const helpModal = document.getElementById('helpModal');
+function openHelp(){ helpModal.classList.add('open'); }
+function closeHelp(){ helpModal.classList.remove('open'); }
+document.getElementById('helpBtn').addEventListener('click', openHelp);
+document.getElementById('helpClose').addEventListener('click', closeHelp);
+document.getElementById('helpGotIt').addEventListener('click', closeHelp);
+document.getElementById('helpTour').addEventListener('click', ()=>{ closeHelp(); startTour(); });
+helpModal.addEventListener('click', e=>{ if(e.target===helpModal) closeHelp(); });
+addEventListener('keydown', e=>{ if(e.key==='Escape' && helpModal.classList.contains('open')) closeHelp(); });
 
 const obsToggle = document.getElementById('obsToggle');
 obsToggle.addEventListener('click', ()=> setObserver(!state.observer));
@@ -757,11 +938,11 @@ const TOUR = [
   { title:'Send a wave', body:'Treat the light as a wave. It passes through BOTH slits at once, and the two ripples overlap — adding where crests meet, cancelling where crest meets trough. The screen lights up in bright and dark bands: an interference pattern.',
     apply:()=>{ setMode('wave'); setObserver(false); state.showField=true; field.visible=true; document.getElementById('chipField').classList.add('on'); flyTo(new THREE.Vector3(2,16,7), new THREE.Vector3(3,0,0)); } },
   { title:'One particle at a time', body:'Now turn the intensity way down — single photons, fired one by one. Each arrives as a single dot in an unpredictable spot. No wave in sight… or so it seems. Click “Fire one”.',
-    apply:()=>{ clearScreen(); setMode('single'); setObserver(false); flyTo(new THREE.Vector3(-7,5,16), new THREE.Vector3(state.L-1,0.4,0)); } },
+    apply:()=>{ softClear(); setMode('single'); setObserver(false); flyTo(new THREE.Vector3(-7,5,16), new THREE.Vector3(state.L-1,0.4,0)); } },
   { title:'The pattern builds itself', body:'Keep firing. Each dot is random — yet thousands of them pile up into the very same striped interference pattern. Each particle somehow “knows” about both slits. Watch the histogram match the theory curve.',
     apply:()=>{ setMode('stream'); state.rate=160; document.getElementById('rate').value=160; document.getElementById('rate').dispatchEvent(new Event('input')); streaming=true; document.getElementById('fireBtn').textContent='Stop ◼'; flyTo(new THREE.Vector3(-6,5,15), new THREE.Vector3(state.L-1,0.4,0)); } },
   { title:'The observer effect', body:'Place a detector at the slits to record which one each particle goes through. The instant the path is known, the stripes collapse into a single smooth band — the interference is gone. Stop watching, and it returns. That is the mystery.',
-    apply:()=>{ clearScreen(); setMode('stream'); streaming=true; document.getElementById('fireBtn').textContent='Stop ◼'; setObserver(true); document.getElementById('rate').value=200; document.getElementById('rate').dispatchEvent(new Event('input')); flyTo(new THREE.Vector3(-3,7,14), new THREE.Vector3(2,0.4,0)); } },
+    apply:()=>{ softClear(); setMode('stream'); streaming=true; document.getElementById('fireBtn').textContent='Stop ◼'; setObserver(true); document.getElementById('rate').value=200; document.getElementById('rate').dispatchEvent(new Event('input')); flyTo(new THREE.Vector3(-3,7,14), new THREE.Vector3(2,0.4,0)); } },
 ];
 let tourIdx = 0, tourActive = true;
 const tourEl = document.getElementById('tour');
@@ -778,11 +959,122 @@ function renderTour(){
   t.apply();
 }
 function startTour(){ tourActive=true; tourIdx=0; tourEl.style.display='block'; tourFab.style.display='none'; renderTour(); }
-function endTour(){ tourActive=false; tourEl.style.display='none'; tourFab.style.display='flex'; }
+function endTour(){
+  tourActive=false; tourEl.style.display='none'; tourFab.style.display='flex';
+  // Clean handoff to the sandbox: stop the runaway stream and restore the natural
+  // interference state (observer off) — but DON'T wipe what the user just built.
+  streaming=false;
+  setObserver(false, {silent:true});
+  document.getElementById('fireBtn').textContent =
+    state.mode==='stream' ? 'Start stream ▸' : (state.mode==='single' ? 'Fire one ▸' : 'Fire ▸');
+  flyTo(new THREE.Vector3(-9, 7.5, 15), new THREE.Vector3(2, 0.5, 0));
+}
 document.getElementById('tourNext').addEventListener('click', ()=>{ if(tourIdx<TOUR.length-1){tourIdx++;renderTour();} else endTour(); });
 document.getElementById('tourPrev').addEventListener('click', ()=>{ if(tourIdx>0){tourIdx--;renderTour();} });
 document.getElementById('tourSkip').addEventListener('click', endTour);
-tourFab.addEventListener('click', startTour);
+tourFab.addEventListener('click', ()=>{ endCoach(true); startTour(); });
+
+// ============================================================= COACHMARK FTUI (orange)
+// A first-time walkthrough that points to the actual buttons to press, in order,
+// to recreate the experiment. Clicking the highlighted control advances; so does Next.
+const fb = ()=>document.getElementById('fireBtn');
+const COACH = [
+  { sel:'#modeSeg button[data-mode="wave"]', title:'Send a wave', tap:true,
+    body:'Press Wave. Light passes through both slits at once and the ripples interfere — bright and dark bands appear on the screen.',
+    pre:()=>{ endTour(); setObserver(false,{silent:true}); } },
+  { sel:'#modeSeg button[data-mode="single"]', title:'Now fire particles', tap:true,
+    body:'Switch to Particle mode — we’ll send the light one photon at a time instead of as a continuous wave.' },
+  { sel:'#fireBtn', title:'Fire one photon', tap:true,
+    body:'Press Fire one — a few times. Each photon lands as a single dot in a random spot. Looks like pure noise, right?',
+    pre:()=>{ setMode('single'); } },
+  { sel:'#modeSeg button[data-mode="stream"]', title:'Speed it up', tap:true,
+    body:'Switch to Stream to fire photons rapidly and watch what thousands of those “random” dots add up to.' },
+  { sel:'#fireBtn', title:'Build the pattern', tap:true,
+    body:'Press Start stream. The random dots pile up into the exact same striped interference pattern — each particle somehow knows about both slits.',
+    pre:()=>{ setMode('stream'); streaming=false; fb().textContent='Start stream ▸'; } },
+  { sel:'#obsToggle', title:'The mystery: look at the slits', tap:true,
+    body:'Now switch on the which-path detector. The instant we record which slit each photon takes, the stripes collapse into a smooth blob. Switch it off and they return.',
+    pre:()=>{ setMode('stream'); if(!streaming){ streaming=true; fb().textContent='Stop ◼'; } } },
+  { sel:'#resetBtn', title:'Start over anytime', tap:true,
+    body:'This red button clears the screen so you can run the experiment again with different settings — wavelength, slit spacing, screen distance.' },
+  { sel:null, title:'You’ve got it ✦', tap:false,
+    body:'That’s the whole experiment. Play with the sliders to change the physics, or open Help (?) for the full story and a cinematic tour. Have fun.' },
+];
+
+const coachEl   = document.getElementById('coach');
+const coachSpot = document.getElementById('coachSpot');
+const coachTip  = document.getElementById('coachTip');
+let coachIdx = 0, coachTarget = null, coachAdvancer = null;
+
+function clampN(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+function positionCoach(){
+  const t = COACH[coachIdx];
+  const el = t.sel ? document.querySelector(t.sel) : null;
+  const tw = coachTip.offsetWidth, th = coachTip.offsetHeight;
+  if(!el){                                   // centered card, full dim, no spotlight
+    coachSpot.classList.add('nospot');
+    coachSpot.style.top='50%'; coachSpot.style.left='50%';
+    coachSpot.style.width='0px'; coachSpot.style.height='0px';
+    coachTip.style.left = clampN((innerWidth-tw)/2, 12, innerWidth-tw-12)+'px';
+    coachTip.style.top  = clampN((innerHeight-th)/2, 12, innerHeight-th-12)+'px';
+    return;
+  }
+  coachSpot.classList.remove('nospot');
+  const r = el.getBoundingClientRect();
+  const pad = 7;
+  const sx = r.left-pad, sy = r.top-pad, sw = r.width+2*pad, sh = r.height+2*pad;
+  coachSpot.style.left = sx+'px'; coachSpot.style.top = sy+'px';
+  coachSpot.style.width = sw+'px'; coachSpot.style.height = sh+'px';
+  const gap = 16;
+  let tx, ty;
+  if(sx+sw+gap+tw <= innerWidth-12){ tx = sx+sw+gap; ty = sy; }            // right of target
+  else if(sx-gap-tw >= 12){ tx = sx-gap-tw; ty = sy; }                     // left
+  else if(sy+sh+gap+th <= innerHeight-12){ tx = sx; ty = sy+sh+gap; }      // below
+  else { tx = sx; ty = sy-gap-th; }                                        // above
+  coachTip.style.left = clampN(tx, 12, innerWidth-tw-12)+'px';
+  coachTip.style.top  = clampN(ty, 12, innerHeight-th-12)+'px';
+}
+
+function renderCoach(){
+  const t = COACH[coachIdx];
+  if(t.pre) t.pre();
+  // detach previous advancer
+  if(coachTarget && coachAdvancer){ coachTarget.removeEventListener('click', coachAdvancer); }
+  coachTarget = t.sel ? document.querySelector(t.sel) : null;
+  // make sure the target is scrolled into view (mobile: panel scrolls)
+  if(coachTarget && coachTarget.scrollIntoView) coachTarget.scrollIntoView({block:'nearest', inline:'nearest'});
+  document.getElementById('coachStep').textContent = `STEP ${coachIdx+1} / ${COACH.length}`;
+  document.getElementById('coachTitle').textContent = t.title;
+  document.getElementById('coachBody').textContent = t.body;
+  document.getElementById('coachTap').classList.toggle('hide', !t.tap);
+  document.getElementById('coachPrev').disabled = coachIdx===0;
+  document.getElementById('coachNext').textContent = coachIdx===COACH.length-1 ? 'Done' : 'Next';
+  const dots = document.getElementById('coachDots'); dots.innerHTML='';
+  COACH.forEach((_,i)=>{ const s=document.createElement('span'); if(i===coachIdx)s.className='on'; dots.appendChild(s); });
+  // clicking the real control advances (after its own action runs)
+  if(coachTarget){
+    coachAdvancer = ()=> setTimeout(()=>{ if(coachEl.classList.contains('active')) nextCoach(); }, 220);
+    coachTarget.addEventListener('click', coachAdvancer);
+  }
+  positionCoach();                       // position now (don't depend on rAF timing)
+  requestAnimationFrame(positionCoach);  // and correct after any scroll/layout settle
+}
+function startCoach(){ endTour(); coachIdx=0; coachEl.classList.add('active'); tourFab.style.display='none'; renderCoach(); }
+function nextCoach(){ if(coachIdx<COACH.length-1){ coachIdx++; renderCoach(); } else endCoach(); }
+function prevCoach(){ if(coachIdx>0){ coachIdx--; renderCoach(); } }
+function endCoach(quiet){
+  if(coachTarget && coachAdvancer){ coachTarget.removeEventListener('click', coachAdvancer); coachTarget=null; }
+  coachEl.classList.remove('active');
+  tourFab.style.display='flex';
+  try{ localStorage.setItem('ds_ftui_done','1'); }catch(e){}
+  if(!quiet){ /* leave the experiment in whatever state the user reached */ }
+}
+document.getElementById('coachNext').addEventListener('click', nextCoach);
+document.getElementById('coachPrev').addEventListener('click', prevCoach);
+document.getElementById('coachSkip').addEventListener('click', ()=>endCoach());
+document.getElementById('helpCoach').addEventListener('click', ()=>{ closeHelp(); startCoach(); });
+addEventListener('resize', ()=>{ if(coachEl.classList.contains('active')) positionCoach(); });
+addEventListener('scroll', ()=>{ if(coachEl.classList.contains('active')) positionCoach(); }, true);
 
 // camera fly-to
 let camAnim = null;
@@ -810,6 +1102,16 @@ function tick(now){
   let anyFade=false;
   for(let i=0;i<MAX_PTS;i++){ if(ptAlpha[i]>0){ ptAlpha[i]=Math.max(0, ptAlpha[i]-dt*0.25); anyFade=true; } }
   if(anyFade){ ptGeo.attributes.aAlpha.needsUpdate=true; ptGeo.attributes.position.needsUpdate=true; }
+
+  // smooth screen dissolve (tour transitions) — accumulated heatmap melts away
+  if(hmFade>0){
+    hmCtx.globalCompositeOperation='destination-out';
+    hmCtx.fillStyle='rgba(0,0,0,'+Math.min(0.5, dt*2.4)+')';
+    hmCtx.fillRect(0,0,HM_W,HM_H);
+    hmCtx.globalCompositeOperation='lighter';
+    hmTex.needsUpdate=true;
+    hmFade=Math.max(0, hmFade - dt*0.6);
+  }
 
   // detector ring pulse + per-detection spark
   ring1Flash = Math.max(0, ring1Flash - dt*3.2);
@@ -852,7 +1154,11 @@ addEventListener('resize', ()=>{
 recompute();
 setMode('wave');
 sizeGraph();
-startTour();
+// First-time visitors get the orange button-by-button walkthrough (FTUI).
+// Returning visitors land straight in the sandbox (the story tour is on the FAB / Help).
+let ftuiDone = false;
+try{ ftuiDone = !!localStorage.getItem('ds_ftui_done'); }catch(e){}
+if(ftuiDone){ tourFab.style.display='flex'; } else { startCoach(); }
 requestAnimationFrame(tick);
 </script>
 </body>
