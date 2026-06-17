@@ -1246,11 +1246,10 @@ addEventListener('resize', ()=>{
 recompute();
 setMode('wave');
 sizeGraph();
-// First-time visitors get the orange button-by-button walkthrough (FTUI).
-// Returning visitors land straight in the sandbox (the story tour is on the FAB / Help).
-let ftuiDone = false;
-try{ ftuiDone = !!localStorage.getItem('ds_ftui_done'); }catch(e){}
-if(ftuiDone){ fabsEl.style.display='flex'; } else { startCoach(); }
+// On entry, greet with the help window — it's the landing screen and offers the
+// walkthrough, the story tour, or "Got it" to dive in. The FABs sit ready behind it.
+fabsEl.style.display='flex';
+openHelp();
 requestAnimationFrame(tick);
 </script>
 </body>
