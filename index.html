@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Double Slit — Wave / Particle Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;600&display=swap" rel="stylesheet">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+  :root {
+    --bg: #06080f;
+    --panel: rgba(18, 22, 33, 0.82);
+    --panel-2: rgba(26, 31, 46, 0.9);
+    --border: #2a3146;
+    --text: #e7eaf3;
+    --text-dim: #9aa3b8;
+    --text-mute: #69708a;
+    --accent: #7c5cfc;
+    --accent-soft: rgba(124, 92, 252, 0.16);
+    --ok: #34d399;
+    --warn: #fbbf24;
+    --danger: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--bg); color: var(--text);
+    font-family: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    overflow: hidden;
+  }
+  #scene { position: fixed; inset: 0; }
+  .label2d {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-dim);
+    background: rgba(6, 8, 15, 0.55);
+    border: 1px solid var(--border);
+    border-radius: 6px; padding: 3px 8px;
+    pointer-events: none; white-space: nowrap;
+    backdrop-filter: blur(4px);
+  }
+
+  /* ---- Control panel ---- */
+  #panel {
+    position: fixed; top: 16px; left: 16px; width: 290px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 14px; padding: 16px 16px 14px;
+    backdrop-filter: blur(14px);
+    box-shadow: 0 18px 50px rgba(0,0,0,0.5);
+    z-index: 20; max-height: calc(100vh - 32px); overflow-y: auto;
+  }
+  #panel h1 {
+    margin: 0 0 2px; font-size: 16px; font-weight: 600; letter-spacing: 0.01em;
+  }
+  #panel .sub { margin: 0 0 14px; font-size: 11.5px; color: var(--text-mute); font-family: "JetBrains Mono", monospace; }
+
+  .seg { display: flex; gap: 4px; background: rgba(0,0,0,0.3); border:1px solid var(--border); border-radius: 10px; padding: 4px; margin-bottom: 14px; }
+  .seg button {
+    flex: 1; border: 0; background: transparent; color: var(--text-dim);
+    font-family: inherit; font-size: 12px; font-weight: 500; padding: 7px 4px;
+    border-radius: 7px; cursor: pointer; transition: all 0.15s;
+  }
+  .seg button.active { background: var(--accent); color: #fff; box-shadow: 0 4px 14px var(--accent-soft); }
+
+  .ctl { margin-bottom: 13px; }
+  .ctl .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+  .ctl label { font-size: 12px; color: var(--text-dim); }
+  .ctl .val { font-size: 11.5px; color: var(--text); font-family: "JetBrains Mono", monospace; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 4px;
+    background: linear-gradient(90deg, var(--accent) 0%, var(--accent) var(--fill,50%), #2a3146 var(--fill,50%));
+    border-radius: 3px; outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 15px; height: 15px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--accent); cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  }
+  input[type=range]::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: #fff; border: 3px solid var(--accent); cursor: pointer; }
+
+  .btnrow { display: flex; gap: 8px; margin-bottom: 12px; }
+  .btn {
+    flex: 1; border: 1px solid var(--border); background: var(--panel-2); color: var(--text);
+    font-family: inherit; font-size: 12px; font-weight: 500; padding: 9px 6px; border-radius: 9px;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+
+  .toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); margin-bottom: 9px; background: rgba(0,0,0,0.18); cursor: pointer; transition: all 0.15s; }
+  .toggle:hover { border-color: #3a4360; }
+  .toggle.on { border-color: var(--warn); background: rgba(251,191,36,0.08); }
+  .toggle .tlabel { font-size: 12.5px; font-weight: 500; }
+  .toggle .tdesc { font-size: 10.5px; color: var(--text-mute); margin-top: 2px; }
+  .switch { width: 38px; height: 22px; border-radius: 12px; background: #2a3146; position: relative; flex-shrink: 0; transition: background 0.2s; }
+  .switch::after { content:""; position:absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.2s; }
+  .toggle.on .switch { background: var(--warn); }
+  .toggle.on .switch::after { transform: translateX(16px); }
+
+  .mini-toggles { display:flex; gap: 7px; margin-bottom: 4px; }
+  .mini-toggles .chip { flex:1; text-align:center; font-size: 10.5px; padding: 6px 4px; border:1px solid var(--border); border-radius: 8px; color: var(--text-mute); cursor:pointer; user-select:none; }
+  .mini-toggles .chip.on { color: var(--text); border-color: var(--accent); background: var(--accent-soft); }
+
+  /* ---- Graph overlay ---- */
+  #graph {
+    position: fixed; bottom: 16px; right: 16px; width: 300px; height: 150px;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px 12px 8px; backdrop-filter: blur(14px); z-index: 20;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+  }
+  #graph .ghead { display:flex; justify-content:space-between; align-items:baseline; margin-bottom: 6px; }
+  #graph .gtitle { font-size: 11px; color: var(--text-dim); letter-spacing: 0.04em; }
+  #graph .gcount { font-size: 11px; font-family: "JetBrains Mono", monospace; color: var(--accent); }
+  #graphCanvas { width: 100%; height: 102px; display: block; }
+  #graph .glegend { display:flex; gap: 12px; font-size: 9.5px; color: var(--text-mute); margin-top: 3px; font-family:"JetBrains Mono",monospace; }
+  #graph .glegend i { display:inline-block; width:9px; height:2px; vertical-align:middle; margin-right:4px; }
+
+  /* ---- Tour overlay ---- */
+  #tour {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    width: min(560px, calc(100vw - 360px)); z-index: 30;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 20px; backdrop-filter: blur(16px); box-shadow: 0 18px 50px rgba(0,0,0,0.55);
+  }
+  #tour .ttop { display:flex; align-items:center; gap:10px; margin-bottom: 7px; }
+  #tour .tstep { font-family:"JetBrains Mono",monospace; font-size: 10.5px; color: var(--accent); letter-spacing:0.08em; }
+  #tour .tdots { display:flex; gap:5px; margin-left:auto; }
+  #tour .tdots span { width:6px; height:6px; border-radius:50%; background:#2a3146; }
+  #tour .tdots span.on { background: var(--accent); }
+  #tour h3 { margin: 0 0 5px; font-size: 16px; }
+  #tour p { margin: 0 0 12px; font-size: 13px; line-height: 1.55; color: var(--text-dim); }
+  #tour .trow { display:flex; gap: 8px; align-items:center; }
+  #tour .trow .spacer { flex:1; }
+  #tour .ghost { background:transparent; border:0; color: var(--text-mute); font-family:inherit; font-size:12px; cursor:pointer; }
+  #tour .ghost:hover { color: var(--text); }
+
+  #tourFab {
+    position: fixed; bottom: 16px; left: 16px; z-index: 20;
+    display:none; align-items:center; gap:7px;
+    background: var(--accent); color:#fff; border:0; border-radius: 10px;
+    font-family:inherit; font-size:12.5px; font-weight:500; padding: 10px 14px; cursor:pointer;
+    box-shadow: 0 8px 24px var(--accent-soft);
+  }
+
+  .hint { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 15;
+    font-size: 11px; color: var(--text-mute); font-family:"JetBrains Mono",monospace;
+    background: rgba(6,8,15,0.5); border:1px solid var(--border); padding: 5px 12px; border-radius: 20px; pointer-events:none; }
+
+  /* ---- Observer measurement caption ---- */
+  #obsCaption {
+    position: fixed; top: 56px; left: 50%; transform: translateX(-50%) translateY(-8px);
+    z-index: 25; pointer-events: none; opacity: 0; transition: opacity 0.35s, transform 0.35s;
+    display: flex; align-items: center; gap: 9px;
+    font-size: 13px; font-weight: 500; color: var(--text);
+    background: rgba(10,13,22,0.9); border: 1px solid var(--border);
+    padding: 9px 16px; border-radius: 24px; backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  #obsCaption.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #obsCaption .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  #obsCaption.on  { border-color: var(--warn); }
+  #obsCaption.on  .dot { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+  #obsCaption.off .dot { background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+
+  @media (max-width: 760px) {
+    .hint { display: none; }
+    #panel { width: calc(100vw - 24px); left: 12px; top: 12px; max-height: 42vh; padding: 13px; }
+    #graph { width: calc(100vw - 24px); left: 12px; right: auto; bottom: 12px; height: 132px; }
+    #tour { width: calc(100vw - 24px); left: 12px; transform: none; bottom: 156px; padding: 14px 16px; }
+    #tour p { font-size: 12.5px; }
+    #tourFab { bottom: 156px; }
+    #obsCaption { width: max-content; max-width: calc(100vw - 24px); font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div class="hint">drag to orbit · scroll to zoom</div>
+<div id="obsCaption"><span class="dot"></span><span id="obsCaptionText"></span></div>
+
+<div id="panel">
+  <h1>Double&nbsp;Slit</h1>
+  <p class="sub">wave · particle · the observer</p>
+
+  <div class="seg" id="modeSeg">
+    <button data-mode="wave" class="active">Wave</button>
+    <button data-mode="single">Particle</button>
+    <button data-mode="stream">Stream</button>
+  </div>
+
+  <div class="btnrow" id="fireRow">
+    <button class="btn primary" id="fireBtn">Fire ▸</button>
+    <button class="btn" id="clearBtn">Clear screen</button>
+  </div>
+
+  <div class="ctl">
+    <div class="row"><label>Wavelength</label><span class="val" id="lamVal">550 nm</span></div>
+    <input type="range" id="lam" min="400" max="700" step="1" value="550">
+  </div>
+  <div class="ctl">
+    <div class="row"><label>Slit separation&nbsp;<i>d</i></label><span class="val" id="dVal">1.00</span></div>
+    <input type="range" id="d" min="0.45" max="2.2" step="0.01" value="1.0">
+  </div>
+  <div class="ctl">
+    <div class="row"><label>Slit width&nbsp;<i>a</i></label><span class="val" id="aVal">0.22</span></div>
+    <input type="range" id="a" min="0.08" max="0.55" step="0.005" value="0.22">
+  </div>
+  <div class="ctl">
+    <div class="row"><label>Screen distance&nbsp;<i>L</i></label><span class="val" id="LVal">10.0</span></div>
+    <input type="range" id="L" min="6" max="16" step="0.1" value="10">
+  </div>
+  <div class="ctl" id="rateCtl" style="display:none">
+    <div class="row"><label>Fire rate</label><span class="val" id="rateVal">60 / s</span></div>
+    <input type="range" id="rate" min="5" max="240" step="1" value="60">
+  </div>
+
+  <div class="toggle" id="obsToggle">
+    <div>
+      <div class="tlabel">Which-path detector</div>
+      <div class="tdesc">Watch the slits → interference dies</div>
+    </div>
+    <div class="switch"></div>
+  </div>
+
+  <div class="mini-toggles">
+    <div class="chip on" id="chipField">Wave field</div>
+    <div class="chip on" id="chipTheory">Theory curve</div>
+    <div class="chip on" id="chipPlay">Time ▶</div>
+  </div>
+</div>
+
+<div id="graph">
+  <div class="ghead"><span class="gtitle">Intensity on screen</span><span class="gcount" id="hitCount">0 hits</span></div>
+  <canvas id="graphCanvas"></canvas>
+  <div class="glegend"><span><i style="background:var(--accent)"></i>theory I(x)</span><span><i style="background:#5ad7c0"></i>detected hits</span></div>
+</div>
+
+<button id="tourFab">✦ Guided tour</button>
+
+<div id="tour">
+  <div class="ttop">
+    <span class="tstep" id="tourStep">STEP 1 / 5</span>
+    <div class="tdots" id="tourDots"></div>
+  </div>
+  <h3 id="tourTitle"></h3>
+  <p id="tourBody"></p>
+  <div class="trow">
+    <button class="ghost" id="tourSkip">Skip to sandbox</button>
+    <div class="spacer"></div>
+    <button class="btn" id="tourPrev" style="flex:0 0 auto;padding:8px 16px">Back</button>
+    <button class="btn primary" id="tourNext" style="flex:0 0 auto;padding:8px 18px">Next</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+// ============================================================= PHYSICS
+// Far-field two-slit intensity. All visuals derive from this.
+//   I(x) = cos²(π d sinθ / λ) · sinc²(π a sinθ / λ)
+// with sinθ = x / sqrt(x² + L²). Observer mode drops the cos² term.
+const state = {
+  mode: 'wave',
+  lambdaNm: 550,
+  lambda: 0,        // scene-unit wavelength (set from nm)
+  d: 1.0,
+  a: 0.22,
+  L: 10,
+  observer: false,
+  rate: 60,
+  showField: true,
+  showTheory: true,
+  playing: true,
+  fired: 0,
+};
+const SCREEN_HALF = 6.5;   // physical half-extent sampled along x (screen z-range)
+const BEAM_HALF_Y = 1.9;   // vertical spread of arrivals
+
+function nmToScene(nm){ return nm / 2200; }            // ~0.18..0.32 scene units
+function sinc(x){ return x === 0 ? 1 : Math.sin(x)/x; }
+
+function singleSlitEnv(pos, center){ // single-slit diffraction centred behind a slit
+  const rel = pos - center;
+  const sinT = rel / Math.sqrt(rel*rel + state.L*state.L);
+  const e = sinc(Math.PI * state.a * sinT / state.lambda);
+  return e*e;
+}
+function intensity(pos){ // pos = position on screen (the "x" in the formula)
+  if(state.observer){
+    // path known: incoherent sum of two single-slit patterns, one behind each slit.
+    // Close slits overlap into one hump; far slits separate into two clumps.
+    return 0.5*(singleSlitEnv(pos, state.d/2) + singleSlitEnv(pos, -state.d/2));
+  }
+  const sinT = pos / Math.sqrt(pos*pos + state.L*state.L);
+  const env = sinc(Math.PI * state.a * sinT / state.lambda);
+  const inter = Math.cos(Math.PI * state.d * sinT / state.lambda);
+  return inter*inter * env*env;
+}
+
+// Inverse-CDF sampler, rebuilt only when physics params change.
+let CDF = null;
+const NBINS = 1400;
+function buildCDF(){
+  const xs = new Float32Array(NBINS), cdf = new Float32Array(NBINS);
+  let acc = 0;
+  for(let i=0;i<NBINS;i++){
+    const x = -SCREEN_HALF + (2*SCREEN_HALF) * i/(NBINS-1);
+    xs[i] = x;
+    acc += Math.max(0, intensity(x));
+    cdf[i] = acc;
+  }
+  for(let i=0;i<NBINS;i++) cdf[i] /= acc;               // normalise to 1
+  CDF = { xs, cdf };
+}
+function sampleX(){
+  const u = Math.random();
+  const { xs, cdf } = CDF;
+  let lo = 0, hi = NBINS-1;
+  while(lo < hi){ const m = (lo+hi)>>1; if(cdf[m] < u) lo = m+1; else hi = m; }
+  // jitter within the bin for a continuous look
+  const j = (Math.random()-0.5) * (2*SCREEN_HALF/NBINS);
+  return xs[lo] + j;
+}
+
+// Approximate visible-wavelength → RGB
+function wavelengthToRGB(nm){
+  let r=0,g=0,b=0;
+  if(nm<440){ r=-(nm-440)/(440-380); b=1; }
+  else if(nm<490){ g=(nm-440)/(490-440); b=1; }
+  else if(nm<510){ g=1; b=-(nm-510)/(510-490); }
+  else if(nm<580){ r=(nm-510)/(580-510); g=1; }
+  else if(nm<645){ r=1; g=-(nm-645)/(645-580); }
+  else { r=1; }
+  let f=1;
+  if(nm<420) f=0.3+0.7*(nm-380)/(420-380);
+  else if(nm>700) f=0.3;
+  const gamma=0.8;
+  return new THREE.Color(Math.pow(r*f,gamma), Math.pow(g*f,gamma), Math.pow(b*f,gamma));
+}
+
+// ============================================================= SCENE
+const container = document.getElementById('scene');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x06080f);
+scene.fog = new THREE.FogExp2(0x06080f, 0.018);
+
+const camera = new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 500);
+camera.position.set(-9, 7.5, 15);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+container.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(innerWidth, innerHeight);
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0';
+labelRenderer.domElement.style.pointerEvents = 'none';
+container.appendChild(labelRenderer.domElement);
+
+const controls = new OrbitControls(camera, labelRenderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 6; controls.maxDistance = 60;
+controls.target.set(2, 0.5, 0);
+
+scene.add(new THREE.AmbientLight(0x8090c0, 0.5));
+const key = new THREE.DirectionalLight(0xffffff, 0.8); key.position.set(-6,12,8); scene.add(key);
+const fill = new THREE.PointLight(0x6c7cff, 0.6, 80); fill.position.set(8,4,10); scene.add(fill);
+
+// --- ground reference grid
+const grid = new THREE.GridHelper(60, 60, 0x1c2336, 0x121726);
+grid.position.y = -2.2; scene.add(grid);
+
+// ------------------------------------------------------------- geometry layout
+// Optical axis = +X.  Barrier at x=0, source at x=-SOURCE_X, screen at x=L.
+// Slits separated along Z, tall along Y.
+const SOURCE_X = 7;
+const SLIT_HEIGHT = 3.4;
+
+// --- Source emitter
+const source = new THREE.Group();
+const emitterBody = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.55, 0.8, 1.6, 24),
+  new THREE.MeshStandardMaterial({ color:0x202636, metalness:0.7, roughness:0.35 })
+);
+emitterBody.rotation.z = Math.PI/2; source.add(emitterBody);
+const emitterGlow = new THREE.Mesh(
+  new THREE.SphereGeometry(0.35, 24, 24),
+  new THREE.MeshBasicMaterial({ color:0xffffff })
+);
+emitterGlow.position.x = 0.8; source.add(emitterGlow);
+source.position.set(-SOURCE_X, 0, 0);
+scene.add(source);
+
+// --- Beam (source → barrier)
+const beam = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.06, 0.06, SOURCE_X, 12),
+  new THREE.MeshBasicMaterial({ color:0xffffff, transparent:true, opacity:0.32 })
+);
+beam.rotation.z = Math.PI/2;
+beam.position.set(-SOURCE_X/2, 0, 0);
+scene.add(beam);
+
+// --- Barrier with two slits (built from 3 panels: outer-left, center, outer-right)
+const barrier = new THREE.Group();
+scene.add(barrier);
+const barrierMat = new THREE.MeshStandardMaterial({ color:0x10141f, metalness:0.4, roughness:0.6, side:THREE.DoubleSide });
+const panels = [new THREE.Mesh(new THREE.BoxGeometry(0.12,SLIT_HEIGHT,1),barrierMat),
+                new THREE.Mesh(new THREE.BoxGeometry(0.12,SLIT_HEIGHT,1),barrierMat),
+                new THREE.Mesh(new THREE.BoxGeometry(0.12,SLIT_HEIGHT,1),barrierMat)];
+panels.forEach(p=>barrier.add(p));
+// top & bottom caps so slits look like finite vertical gaps
+const capMat = barrierMat;
+const capTop = new THREE.Mesh(new THREE.BoxGeometry(0.12, 1.4, 2*SCREEN_HALF), capMat);
+const capBot = capTop.clone();
+capTop.position.y = SLIT_HEIGHT/2 + 0.7; capBot.position.y = -SLIT_HEIGHT/2 - 0.7;
+barrier.add(capTop, capBot);
+
+// --- Detector rings around slits (which-path)
+const ringMat = new THREE.MeshBasicMaterial({ color:0xfbbf24, transparent:true, opacity:0 });
+const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.06, 12, 32), ringMat.clone());
+const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.55, 0.06, 12, 32), ringMat.clone());
+ring1.rotation.y = Math.PI/2; ring2.rotation.y = Math.PI/2;
+barrier.add(ring1, ring2);
+
+function layoutBarrier(){
+  const half = SCREEN_HALF;
+  const slitCenter = state.d/2;
+  const sw = state.a;                       // slit width along z
+  // center panel between the two slits
+  const centerW = Math.max(0.02, state.d - sw);
+  panels[1].scale.z = centerW; panels[1].position.set(0,0,0);
+  // outer panels fill from outer slit edge to screen edge
+  const outerStart = slitCenter + sw/2;
+  const outerW = (half - outerStart);
+  panels[0].scale.z = outerW; panels[0].position.set(0,0, outerStart + outerW/2);
+  panels[2].scale.z = outerW; panels[2].position.set(0,0, -(outerStart + outerW/2));
+  ring1.position.set(0,0, slitCenter);
+  ring2.position.set(0,0, -slitCenter);
+}
+
+// --- Wave-field plane (top-down interference shader), horizontal at y just below axis
+const fieldUniforms = {
+  uTime:{value:0}, uK:{value:0}, uD:{value:state.d}, uA:{value:state.a},
+  uL:{value:state.L}, uObs:{value:0}, uColor:{value:new THREE.Color(0xffffff)},
+  uSourceX:{value:SOURCE_X}, uOpacity:{value:0.9}
+};
+const fieldMat = new THREE.ShaderMaterial({
+  uniforms: fieldUniforms, transparent:true, depthWrite:false, side:THREE.DoubleSide,
+  vertexShader:`
+    varying vec2 vP;
+    void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }
+  `,
+  fragmentShader:`
+    precision highp float;
+    varying vec2 vP;              // x = optical axis, y = transverse (z in world)
+    uniform float uTime,uK,uD,uA,uL,uObs,uSourceX,uOpacity;
+    uniform vec3 uColor;
+    void main(){
+      float x = vP.x;            // along axis (barrier at 0)
+      float z = vP.y;            // transverse
+      float omega = uK * 1.2;
+      float amp;
+      if(x < 0.0){
+        // incoming plane wave travelling +x toward barrier
+        float r = (x + uSourceX);
+        amp = sin(uK*r - omega*uTime) * 0.7;
+        amp *= smoothstep(0.0,1.5, x + uSourceX); // fade near source
+      } else {
+        // two circular waves from the slits
+        vec2 s1 = vec2(0.0,  uD*0.5);
+        vec2 s2 = vec2(0.0, -uD*0.5);
+        float r1 = length(vec2(x,z) - s1) + 0.0001;
+        float r2 = length(vec2(x,z) - s2) + 0.0001;
+        float w1 = sin(uK*r1 - omega*uTime) / sqrt(r1);
+        float w2 = sin(uK*r2 - omega*uTime) / sqrt(r2);
+        if(uObs > 0.5){
+          // path known: intensities add (incoherent) — no stable fringes
+          float I = (1.0/r1 + 1.0/r2) * 0.5;
+          amp = sqrt(I) * sin(omega*uTime*0.6) * 0.8;
+        } else {
+          amp = (w1 + w2);
+        }
+      }
+      float v = amp;
+      // map signed amplitude to color: bright crests in beam color, dark troughs
+      float b = clamp(v*0.9, -1.0, 1.0);
+      vec3 col = uColor * (0.5 + 0.5*b);
+      float glow = clamp(abs(v)*0.8, 0.0, 1.0);
+      col += uColor * glow * 0.4;
+      float alpha = clamp(0.18 + abs(v)*0.55, 0.0, 0.9) * uOpacity;
+      gl_FragColor = vec4(col, alpha);
+    }
+  `
+});
+// plane spans x:[-SOURCE_X, L+1], z:[-SCREEN_HALF, SCREEN_HALF]
+const field = new THREE.Mesh(new THREE.PlaneGeometry(1,1,1,1), fieldMat);
+field.rotation.x = -Math.PI/2;   // lay flat
+field.position.y = -0.02;
+scene.add(field);
+function layoutField(){
+  const len = state.L + 1 + SOURCE_X;
+  field.geometry.dispose();
+  const g = new THREE.PlaneGeometry(len, 2*SCREEN_HALF, 1, 1);
+  // shift so plane-local x maps to world axis with barrier at 0
+  g.translate(len/2 - SOURCE_X, 0, 0);
+  field.geometry = g;
+}
+
+// --- Detection screen + accumulation
+const HM_W = 600, HM_H = 240;
+const hmCanvas = document.createElement('canvas');
+hmCanvas.width = HM_W; hmCanvas.height = HM_H;
+const hmCtx = hmCanvas.getContext('2d');
+function clearHeatmap(){ hmCtx.clearRect(0,0,HM_W,HM_H); hmTex.needsUpdate = true; }
+const hmTex = new THREE.CanvasTexture(hmCanvas);
+const screenMat = new THREE.MeshBasicMaterial({ map:hmTex, transparent:true });
+const screenPlane = new THREE.Mesh(new THREE.PlaneGeometry(2*SCREEN_HALF, SLIT_HEIGHT+2.2), screenMat);
+screenPlane.rotation.y = -Math.PI/2;     // face -x
+scene.add(screenPlane);
+// faint backing so the screen reads as a physical panel
+const screenBack = new THREE.Mesh(
+  new THREE.PlaneGeometry(2*SCREEN_HALF+0.4, SLIT_HEIGHT+2.6),
+  new THREE.MeshStandardMaterial({ color:0x0a0d16, metalness:0.2, roughness:0.8, side:THREE.DoubleSide })
+);
+screenBack.rotation.y = -Math.PI/2; scene.add(screenBack);
+
+function layoutScreen(){
+  screenPlane.position.set(state.L, 0.4, 0);
+  screenBack.position.set(state.L+0.06, 0.4, 0);
+}
+
+// --- Recent-hit glowing points (ring buffer)
+const MAX_PTS = 6000;
+const ptGeo = new THREE.BufferGeometry();
+const ptPos = new Float32Array(MAX_PTS*3);
+const ptAlpha = new Float32Array(MAX_PTS);
+ptGeo.setAttribute('position', new THREE.BufferAttribute(ptPos,3));
+ptGeo.setAttribute('aAlpha', new THREE.BufferAttribute(ptAlpha,1));
+const ptMat = new THREE.ShaderMaterial({
+  transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+  uniforms:{ uColor:{value:new THREE.Color(0xffffff)}, uSize:{value: 14*Math.min(devicePixelRatio,2)} },
+  vertexShader:`
+    attribute float aAlpha; varying float vA; uniform float uSize;
+    void main(){ vA=aAlpha; vec4 mv=modelViewMatrix*vec4(position,1.0);
+      gl_PointSize = uSize * (1.0/ -mv.z) * 8.0; gl_Position=projectionMatrix*mv; }
+  `,
+  fragmentShader:`
+    varying float vA; uniform vec3 uColor;
+    void main(){ vec2 c=gl_PointCoord-0.5; float d=length(c);
+      if(d>0.5) discard; float g=smoothstep(0.5,0.0,d);
+      gl_FragColor=vec4(uColor, g*vA); }
+  `
+});
+const points = new THREE.Points(ptGeo, ptMat);
+points.frustumCulled = false;
+scene.add(points);
+let ptHead = 0, ptLive = 0;
+let ring1Flash = 0, ring2Flash = 0;   // which-path detection sparks
+
+// histogram for the side graph
+const GBINS = 160;
+const hist = new Int32Array(GBINS);
+
+function recordHit(x){
+  // 3D point just in front of screen
+  const y = (Math.random()-0.5) * 2 * BEAM_HALF_Y + 0.4;
+  const i = ptHead;
+  ptPos[i*3] = state.L - 0.05; ptPos[i*3+1] = y; ptPos[i*3+2] = x;
+  ptAlpha[i] = 1.0;
+  ptHead = (ptHead+1) % MAX_PTS;
+  ptLive = Math.min(ptLive+1, MAX_PTS);
+
+  // heatmap blob (z → canvas x, y → canvas y)
+  const cx = (x/SCREEN_HALF * 0.5 + 0.5) * HM_W;
+  const cy = (0.5 - (y-0.4)/( (SLIT_HEIGHT+2.2)/2 ) * 0.5) * HM_H;
+  const r = 7;
+  const col = beamColor;
+  const grd = hmCtx.createRadialGradient(cx,cy,0,cx,cy,r);
+  grd.addColorStop(0, `rgba(${col.r*255|0},${col.g*255|0},${col.b*255|0},0.30)`);
+  grd.addColorStop(1, 'rgba(0,0,0,0)');
+  hmCtx.globalCompositeOperation = 'lighter';
+  hmCtx.fillStyle = grd;
+  hmCtx.beginPath(); hmCtx.arc(cx,cy,r,0,7); hmCtx.fill();
+  hmTex.needsUpdate = true;
+
+  // histogram
+  const gi = Math.min(GBINS-1, Math.max(0, Math.floor((x/SCREEN_HALF*0.5+0.5)*GBINS)));
+  hist[gi]++;
+  state.fired++;
+
+  // which-path: the particle definitively took one slit — spark that detector ring.
+  // Pick the slit weighted by its single-slit contribution at this landing spot.
+  if(state.observer){
+    const w1 = singleSlitEnv(x, state.d/2), w2 = singleSlitEnv(x, -state.d/2);
+    if(Math.random()*(w1+w2) < w1) ring1Flash = 1; else ring2Flash = 1;
+  }
+}
+function clearScreen(){
+  ptAlpha.fill(0); ptLive = 0; ptHead = 0;
+  ptGeo.attributes.aAlpha.needsUpdate = true;
+  hist.fill(0); state.fired = 0;
+  clearHeatmap();
+  document.getElementById('hitCount').textContent = '0 hits';
+}
+
+// ------------------------------------------------------------- labels
+function makeLabel(text, x,y,z){
+  const div = document.createElement('div'); div.className='label2d'; div.textContent=text;
+  const o = new CSS2DObject(div); o.position.set(x,y,z); scene.add(o); return o;
+}
+makeLabel('Source', -SOURCE_X, 1.4, 0);
+const slitLabel = makeLabel('Double slit', 0, SLIT_HEIGHT/2+1.2, 0);
+const screenLabel = makeLabel('Detection screen', state.L, SLIT_HEIGHT/2+1.4, 0);
+const counterLabel = makeLabel('', state.L, -SLIT_HEIGHT/2-1.2, 0);
+
+// ============================================================= STATE WIRING
+let beamColor = new THREE.Color(0xffffff);
+function applyWavelength(){
+  state.lambda = nmToScene(state.lambdaNm);
+  beamColor = wavelengthToRGB(state.lambdaNm);
+  emitterGlow.material.color.copy(beamColor);
+  beam.material.color.copy(beamColor);
+  fieldUniforms.uColor.value.copy(beamColor);
+  fieldUniforms.uK.value = 2*Math.PI/state.lambda;
+  ptMat.uniforms.uColor.value.copy(beamColor);
+  fill.color.copy(beamColor);
+}
+function recompute(){            // call after any physics param change
+  applyWavelength();
+  layoutBarrier(); layoutField(); layoutScreen();
+  fieldUniforms.uD.value = state.d;
+  fieldUniforms.uA.value = state.a;
+  fieldUniforms.uL.value = state.L;
+  fieldUniforms.uObs.value = state.observer ? 1 : 0;
+  screenLabel.position.x = state.L; counterLabel.position.x = state.L;
+  buildCDF();
+}
+
+// ---- panel controls
+function bindSlider(id, valId, fmt, setter){
+  const el = document.getElementById(id), out = document.getElementById(valId);
+  const upd = ()=>{
+    const v = parseFloat(el.value);
+    el.style.setProperty('--fill', ((v-el.min)/(el.max-el.min)*100)+'%');
+    out.textContent = fmt(v); setter(v);
+  };
+  el.addEventListener('input', upd); upd();
+}
+bindSlider('lam','lamVal', v=>v+' nm', v=>{ state.lambdaNm=v; recompute(); });
+bindSlider('d','dVal', v=>v.toFixed(2), v=>{ state.d=v; recompute(); });
+bindSlider('a','aVal', v=>v.toFixed(3), v=>{ state.a=v; recompute(); });
+bindSlider('L','LVal', v=>v.toFixed(1), v=>{ state.L=v; recompute(); });
+bindSlider('rate','rateVal', v=>v+' / s', v=>{ state.rate=v; });
+
+const modeSeg = document.getElementById('modeSeg');
+modeSeg.addEventListener('click', e=>{
+  const b = e.target.closest('button'); if(!b) return;
+  setMode(b.dataset.mode);
+});
+function setMode(m){
+  state.mode = m;
+  [...modeSeg.children].forEach(b=>b.classList.toggle('active', b.dataset.mode===m));
+  document.getElementById('rateCtl').style.display = (m==='stream')?'block':'none';
+  document.getElementById('fireRow').style.display = (m==='wave')?'none':'flex';
+  const fb = document.getElementById('fireBtn');
+  if(m==='single') fb.textContent='Fire one ▸';
+  if(m==='stream') fb.textContent = streaming ? 'Stop ◼' : 'Start stream ▸';
+  // field is the wave visualization; show strongly in wave mode
+  field.visible = state.showField && (m==='wave' || true);
+}
+
+let streaming = false;
+document.getElementById('fireBtn').addEventListener('click', ()=>{
+  if(state.mode==='single'){ for(let i=0;i<1;i++) recordHit(sampleX()); }
+  else if(state.mode==='stream'){ streaming=!streaming; document.getElementById('fireBtn').textContent = streaming?'Stop ◼':'Start stream ▸'; }
+});
+document.getElementById('clearBtn').addEventListener('click', clearScreen);
+
+const obsToggle = document.getElementById('obsToggle');
+obsToggle.addEventListener('click', ()=> setObserver(!state.observer));
+let captionTimer = null;
+function showObsCaption(on){
+  const el = document.getElementById('obsCaption');
+  document.getElementById('obsCaptionText').textContent = on
+    ? 'Path measured — interference lost'
+    : 'Detector off — interference restored';
+  el.classList.remove('on','off'); el.classList.add(on?'on':'off','show');
+  clearTimeout(captionTimer);
+  captionTimer = setTimeout(()=> el.classList.remove('show'), 3200);
+}
+function setObserver(on, opts={}){
+  const changed = state.observer !== on;
+  state.observer = on;
+  obsToggle.classList.toggle('on', on);
+  fieldUniforms.uObs.value = on?1:0;
+  buildCDF();
+  if(changed && !opts.silent) showObsCaption(on);
+}
+
+function bindChip(id, key, onChange){
+  const el = document.getElementById(id);
+  el.addEventListener('click', ()=>{ state[key]=!state[key]; el.classList.toggle('on', state[key]); onChange(); });
+}
+bindChip('chipField','showField', ()=>{ field.visible = state.showField; });
+bindChip('chipTheory','showTheory', ()=>{});
+bindChip('chipPlay','playing', ()=>{ document.getElementById('chipPlay').textContent = state.playing?'Time ▶':'Time ⏸'; });
+
+// ============================================================= SIDE GRAPH
+const gCanvas = document.getElementById('graphCanvas');
+const gctx = gCanvas.getContext('2d');
+function sizeGraph(){
+  const r = Math.min(devicePixelRatio,2);
+  gCanvas.width = gCanvas.clientWidth*r; gCanvas.height = gCanvas.clientHeight*r;
+  gctx.setTransform(r,0,0,r,0,0);
+}
+function drawGraph(){
+  const W = gCanvas.clientWidth, H = gCanvas.clientHeight;
+  gctx.clearRect(0,0,W,H);
+  // histogram bars
+  let hmax = 1; for(let i=0;i<GBINS;i++) hmax = Math.max(hmax, hist[i]);
+  gctx.fillStyle = 'rgba(90,215,192,0.55)';
+  const bw = W/GBINS;
+  for(let i=0;i<GBINS;i++){
+    if(!hist[i]) continue;
+    const h = hist[i]/hmax * (H-4);
+    gctx.fillRect(i*bw, H-h, Math.max(1,bw-0.3), h);
+  }
+  // theory curve
+  if(state.showTheory){
+    let imax = 0;
+    const N = 240, ys=[];
+    for(let i=0;i<N;i++){ const x=-SCREEN_HALF + 2*SCREEN_HALF*i/(N-1); const v=Math.max(0,intensity(x)); ys.push(v); imax=Math.max(imax,v); }
+    gctx.beginPath();
+    for(let i=0;i<N;i++){ const px=i/(N-1)*W; const py=H-(ys[i]/imax)*(H-4); i?gctx.lineTo(px,py):gctx.moveTo(px,py); }
+    gctx.strokeStyle = '#7c5cfc'; gctx.lineWidth=2; gctx.stroke();
+  }
+  document.getElementById('hitCount').textContent = state.fired.toLocaleString()+' hits';
+}
+
+// ============================================================= TOUR
+const TOUR = [
+  { title:'The apparatus', body:'A source on the left fires light at a barrier with two narrow slits. Whatever gets through lands on the detection screen at the right. Drag to orbit — meet the three pieces.',
+    apply:()=>{ setMode('wave'); setObserver(false); flyTo(new THREE.Vector3(-11,6,15), new THREE.Vector3(0,0.5,0)); } },
+  { title:'Send a wave', body:'Treat the light as a wave. It passes through BOTH slits at once, and the two ripples overlap — adding where crests meet, cancelling where crest meets trough. The screen lights up in bright and dark bands: an interference pattern.',
+    apply:()=>{ setMode('wave'); setObserver(false); state.showField=true; field.visible=true; document.getElementById('chipField').classList.add('on'); flyTo(new THREE.Vector3(2,16,7), new THREE.Vector3(3,0,0)); } },
+  { title:'One particle at a time', body:'Now turn the intensity way down — single photons, fired one by one. Each arrives as a single dot in an unpredictable spot. No wave in sight… or so it seems. Click “Fire one”.',
+    apply:()=>{ clearScreen(); setMode('single'); setObserver(false); flyTo(new THREE.Vector3(-7,5,16), new THREE.Vector3(state.L-1,0.4,0)); } },
+  { title:'The pattern builds itself', body:'Keep firing. Each dot is random — yet thousands of them pile up into the very same striped interference pattern. Each particle somehow “knows” about both slits. Watch the histogram match the theory curve.',
+    apply:()=>{ setMode('stream'); state.rate=160; document.getElementById('rate').value=160; document.getElementById('rate').dispatchEvent(new Event('input')); streaming=true; document.getElementById('fireBtn').textContent='Stop ◼'; flyTo(new THREE.Vector3(-6,5,15), new THREE.Vector3(state.L-1,0.4,0)); } },
+  { title:'The observer effect', body:'Place a detector at the slits to record which one each particle goes through. The instant the path is known, the stripes collapse into a single smooth band — the interference is gone. Stop watching, and it returns. That is the mystery.',
+    apply:()=>{ clearScreen(); setMode('stream'); streaming=true; document.getElementById('fireBtn').textContent='Stop ◼'; setObserver(true); document.getElementById('rate').value=200; document.getElementById('rate').dispatchEvent(new Event('input')); flyTo(new THREE.Vector3(-3,7,14), new THREE.Vector3(2,0.4,0)); } },
+];
+let tourIdx = 0, tourActive = true;
+const tourEl = document.getElementById('tour');
+const tourFab = document.getElementById('tourFab');
+function renderTour(){
+  const t = TOUR[tourIdx];
+  document.getElementById('tourStep').textContent = `STEP ${tourIdx+1} / ${TOUR.length}`;
+  document.getElementById('tourTitle').textContent = t.title;
+  document.getElementById('tourBody').textContent = t.body;
+  document.getElementById('tourPrev').disabled = tourIdx===0;
+  document.getElementById('tourNext').textContent = tourIdx===TOUR.length-1 ? 'Finish' : 'Next';
+  const dots = document.getElementById('tourDots'); dots.innerHTML='';
+  TOUR.forEach((_,i)=>{ const s=document.createElement('span'); if(i===tourIdx)s.className='on'; dots.appendChild(s); });
+  t.apply();
+}
+function startTour(){ tourActive=true; tourIdx=0; tourEl.style.display='block'; tourFab.style.display='none'; renderTour(); }
+function endTour(){ tourActive=false; tourEl.style.display='none'; tourFab.style.display='flex'; }
+document.getElementById('tourNext').addEventListener('click', ()=>{ if(tourIdx<TOUR.length-1){tourIdx++;renderTour();} else endTour(); });
+document.getElementById('tourPrev').addEventListener('click', ()=>{ if(tourIdx>0){tourIdx--;renderTour();} });
+document.getElementById('tourSkip').addEventListener('click', endTour);
+tourFab.addEventListener('click', startTour);
+
+// camera fly-to
+let camAnim = null;
+function flyTo(pos, target){
+  camAnim = { fromP:camera.position.clone(), toP:pos.clone(),
+              fromT:controls.target.clone(), toT:target.clone(), t:0 };
+}
+
+// ============================================================= LOOP
+let last = performance.now(), streamAcc = 0;
+function tick(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+
+  if(state.playing) fieldUniforms.uTime.value += dt;
+
+  // streaming fire
+  if(state.mode==='stream' && streaming){
+    streamAcc += dt * state.rate;
+    let n = Math.floor(streamAcc); streamAcc -= n;
+    n = Math.min(n, 400);
+    for(let i=0;i<n;i++) recordHit(sampleX());
+  }
+
+  // fade recent points
+  let anyFade=false;
+  for(let i=0;i<MAX_PTS;i++){ if(ptAlpha[i]>0){ ptAlpha[i]=Math.max(0, ptAlpha[i]-dt*0.25); anyFade=true; } }
+  if(anyFade){ ptGeo.attributes.aAlpha.needsUpdate=true; ptGeo.attributes.position.needsUpdate=true; }
+
+  // detector ring pulse + per-detection spark
+  ring1Flash = Math.max(0, ring1Flash - dt*3.2);
+  ring2Flash = Math.max(0, ring2Flash - dt*3.2);
+  const base = state.observer ? (0.32 + 0.16*Math.sin(now*0.006)) : 0;
+  ring1.material.opacity = Math.min(1, base + ring1Flash);
+  ring2.material.opacity = Math.min(1, base + ring2Flash);
+  ring1.scale.setScalar(1 + ring1Flash*0.55);
+  ring2.scale.setScalar(1 + ring2Flash*0.55);
+
+  // emitter pulse in particle modes
+  emitterGlow.scale.setScalar(state.mode==='wave' ? 1 : (1+0.25*Math.sin(now*0.012)));
+  beam.material.opacity = state.mode==='wave' ? 0.32 : 0.12;
+
+  // camera animation
+  if(camAnim){
+    camAnim.t = Math.min(1, camAnim.t + dt*0.9);
+    const e = 1-Math.pow(1-camAnim.t,3);
+    camera.position.lerpVectors(camAnim.fromP, camAnim.toP, e);
+    controls.target.lerpVectors(camAnim.fromT, camAnim.toT, e);
+    if(camAnim.t>=1) camAnim=null;
+  }
+
+  counterLabel.element.textContent = state.fired>0 ? `${state.fired.toLocaleString()} detected` : '';
+
+  controls.update();
+  drawGraph();
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
+  requestAnimationFrame(tick);
+}
+
+// ============================================================= INIT
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  labelRenderer.setSize(innerWidth, innerHeight);
+  sizeGraph();
+});
+recompute();
+setMode('wave');
+sizeGraph();
+startTour();
+requestAnimationFrame(tick);
+</script>
+</body>
+</html>
