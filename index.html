@@ -291,6 +291,61 @@
     .helpCard { padding: 22px 20px 26px; }
     #coachTip { width: calc(100vw - 24px); }
   }
+
+  /* ===================================================== CINEMATIC RENDER OVERLAY
+     Active only with ?render=1 (the rap-video capture). Adds lower-third captions,
+     title / end cards and control-highlight pulses; hides the interactive chrome. */
+  #cine { position: fixed; inset: 0; z-index: 60; pointer-events: none; display: none;
+          font-family: "Inter", system-ui, sans-serif; }
+  body.render #cine { display: block; }
+  body.render #fabs, body.render #help, body.render #helpModal,
+  body.render #tour, body.render #coach { display: none !important; }
+
+  #cineCap { position: absolute; left: 50%; bottom: 8.5%; transform: translateX(-50%);
+             width: 80%; max-width: 1180px; text-align: center;
+             opacity: 0; transition: opacity .55s ease; }
+  #cineCap.show { opacity: 1; }
+  #cineCap .ck { font-family: "JetBrains Mono", monospace; font-size: 15px;
+                 letter-spacing: .36em; text-transform: uppercase; color: var(--accent);
+                 margin-bottom: 12px; text-shadow: 0 2px 20px #000, 0 0 12px rgba(108,124,255,.5); }
+  #cineCap .ct { font-size: 37px; font-weight: 700; line-height: 1.2; color: #fff;
+                 text-shadow: 0 3px 30px rgba(0,0,0,.9), 0 1px 4px rgba(0,0,0,.9); }
+
+  #cineCard { position: absolute; inset: 0; display: flex; flex-direction: column;
+              align-items: center; justify-content: center; gap: 22px; opacity: 0;
+              transition: opacity .7s ease;
+              background: radial-gradient(ellipse 70% 60% at center, rgba(4,6,12,.84), rgba(4,6,12,.965)); }
+  #cineCard.show { opacity: 1; }
+  #cineCard .kick { font-family: "JetBrains Mono", monospace; font-size: 17px;
+                    letter-spacing: .42em; text-transform: uppercase; color: var(--accent);
+                    text-shadow: 0 0 16px rgba(108,124,255,.6); }
+  #cineCard .big  { font-size: 96px; font-weight: 800; letter-spacing: .02em; color: #fff;
+                    text-shadow: 0 0 60px rgba(108,124,255,.45), 0 6px 50px rgba(0,0,0,.95); }
+  #cineCard .sub2 { font-family: "JetBrains Mono", monospace; font-size: 19px;
+                    letter-spacing: .26em; color: #aeb6d6; }
+
+  .ds-flash { animation: dsflash 1.05s ease-out 3; border-radius: 10px; }
+  @keyframes dsflash {
+    0%,100% { box-shadow: 0 0 0 0 rgba(108,124,255,0); }
+    35%     { box-shadow: 0 0 0 4px rgba(108,124,255,.9), 0 0 30px 8px rgba(108,124,255,.6); }
+  }
+
+  /* ---- Video-tour lightbox + launcher button ---- */
+  #videoFab { background: linear-gradient(180deg,#7d8bff,#5866f0); color:#fff;
+              box-shadow: 0 8px 24px rgba(108,124,255,.4); }
+  #videoModal { position: fixed; inset: 0; z-index: 80; display: none;
+                align-items: center; justify-content: center; padding: 24px;
+                background: rgba(4,6,12,.82); backdrop-filter: blur(6px); }
+  #videoModal.open { display: flex; }
+  #videoModal .vcard { position: relative; width: min(1000px, 96vw); }
+  #videoModal video { width: 100%; border-radius: 14px; background: #000; display: block;
+                      border: 1px solid #1c2336; box-shadow: 0 24px 70px rgba(0,0,0,.7); }
+  #videoModal .vClose { position: absolute; top: -16px; right: -16px; width: 40px; height: 40px;
+                        border-radius: 50%; border: 1px solid var(--border); background: #11151f;
+                        color: #fff; font-size: 21px; line-height: 1; cursor: pointer; z-index: 2; }
+  #videoModal .vClose:hover { background: #1a2030; }
+  #videoModal .vcap { text-align: center; color: #9aa3c4; font-size: 13px; margin-top: 12px; }
+  body.render #videoModal { display: none !important; }
 </style>
 </head>
 <body>
@@ -355,6 +410,7 @@
     <div class="hfoot">
       <button class="btn" id="helpCoach" style="flex:0 0 auto;padding:9px 18px;border-color:var(--coach);color:var(--coach)">◉ Show me the buttons</button>
       <button class="btn primary" id="helpTour" style="flex:0 0 auto;padding:9px 18px;background:var(--tour);border-color:var(--tour);color:#04243a">✦ Guided story tour</button>
+      <button class="btn" id="helpVideo" style="flex:0 0 auto;padding:9px 18px;border-color:#6c7cff;color:#aeb6ff">▶ Watch the rap video</button>
       <button class="btn" id="helpGotIt" style="flex:0 0 auto;padding:9px 18px">Got it</button>
     </div>
   </div>
@@ -418,8 +474,26 @@
 </div>
 
 <div id="fabs">
+  <button id="videoFab">▶ Video tour</button>
   <button id="tourFab">✦ Guided tour</button>
   <button id="coachFab">☞ Walkthrough</button>
+</div>
+
+<!-- Video-tour lightbox: the rendered rap video, hosted alongside the app -->
+<div id="videoModal">
+  <div class="vcard">
+    <button class="vClose" id="videoClose" aria-label="Close">×</button>
+    <video id="rapVideo" controls playsinline preload="none" poster="doubleslit_rap_poster.jpg">
+      <source src="doubleslit_rap.mp4" type="video/mp4">
+    </video>
+    <div class="vcap">A guru-style rap tour of the experiment — rendered live from this app.</div>
+  </div>
+</div>
+
+<!-- Cinematic render overlay (rap-video capture, ?render=1) -->
+<div id="cine">
+  <div id="cineCap"><div class="ck"></div><div class="ct"></div></div>
+  <div id="cineCard"><div class="kick"></div><div class="big"></div><div class="sub2"></div></div>
 </div>
 
 <div id="tour">
@@ -923,6 +997,17 @@ document.getElementById('helpTour').addEventListener('click', ()=>{ closeHelp();
 helpModal.addEventListener('click', e=>{ if(e.target===helpModal) closeHelp(); });
 addEventListener('keydown', e=>{ if(e.key==='Escape' && helpModal.classList.contains('open')) closeHelp(); });
 
+// ---- video-tour lightbox (the hosted rap video) ----
+const videoModal = document.getElementById('videoModal');
+const rapVideo = document.getElementById('rapVideo');
+function openVideo(){ videoModal.classList.add('open'); const pr=rapVideo.play(); if(pr&&pr.catch) pr.catch(()=>{}); }
+function closeVideo(){ videoModal.classList.remove('open'); try{ rapVideo.pause(); }catch(e){} }
+document.getElementById('videoFab').addEventListener('click', openVideo);
+document.getElementById('helpVideo').addEventListener('click', ()=>{ closeHelp(); openVideo(); });
+document.getElementById('videoClose').addEventListener('click', closeVideo);
+videoModal.addEventListener('click', e=>{ if(e.target===videoModal) closeVideo(); });
+addEventListener('keydown', e=>{ if(e.key==='Escape' && videoModal.classList.contains('open')) closeVideo(); });
+
 const obsToggle = document.getElementById('obsToggle');
 obsToggle.addEventListener('click', ()=> setObserver(!state.observer));
 let captionTimer = null;
@@ -1196,11 +1281,215 @@ function fireBlip(){
 }
 addEventListener('pointerdown', ensureAudio);   // unlock/resume audio on first gesture
 
+// ============================================================= CINEMATIC RENDER HARNESS
+// Deterministic, music-synced tour for the rap video. Enabled with ?render=1.
+// Python (render-ds.py) drives __ds.tick(absMs) frame-by-frame; everything below is a
+// pure function of absolute time so the capture is perfectly smooth and reproducible.
+const RENDER = new URLSearchParams(location.search).has('render');
+
+function setSlider(id, v){
+  const el = document.getElementById(id); if(!el) return;
+  el.value = v; el.dispatchEvent(new Event('input'));
+}
+function dsFlash(sel){
+  const el = document.querySelector(sel); if(!el) return;
+  el.classList.remove('ds-flash'); void el.offsetWidth; el.classList.add('ds-flash');
+}
+function fireBtnText(t){ const b=document.getElementById('fireBtn'); if(b) b.textContent=t; }
+
+// ---- timeline (times in SECONDS; total track = 219.6s, break detected ~133–143s) ----
+const V = (x,y,z)=>new THREE.Vector3(x,y,z);
+const TL = {
+  // camera keyframes: {t, p:[pos], g:[target]} — eased (smoothstep) between keys
+  cam: [
+    { t:0,   p:[-13, 8.5, 19],  g:[3, 0.6, 0] },
+    { t:9,   p:[-12.5, 5.5, 15], g:[0, 0.5, 0] },
+    { t:22,  p:[-10, 6, 15],    g:[2, 0.6, 0] },
+    { t:35,  p:[3.5, 15, 9],    g:[3.2, 0, 0] },
+    { t:51,  p:[3, 3, 13.5],    g:[10, 0.4, 0] },
+    { t:66,  p:[2, 3.2, 15],    g:[9, 0.4, 0] },
+    { t:82,  p:[-2.5, 5, 15.5], g:[8, 0.4, 0] },
+    { t:100, p:[-6, 6.5, 14],   g:[5, 0.4, 0] },
+    { t:109, p:[1, 9.5, 12.5],  g:[5, 0.3, 0] },
+    { t:119, p:[-3.5, 3.2, 9],  g:[0.2, 0.4, 0] },
+    { t:128, p:[-2, 6, 13.5],   g:[6.5, 0.4, 0] },
+    { t:133, p:[-0.5, 7, 14],   g:[6.5, 0.4, 0] },
+    { t:143, p:[2.5, 7, 14],    g:[6.5, 0.4, 0] },
+    { t:152, p:[-4, 5, 14],     g:[7, 0.4, 0] },
+    { t:160, p:[-9, 6, 15.5],   g:[2, 0.5, 0] },
+    { t:180, p:[3.5, 12.5, 12], g:[4, 0, 0] },
+    { t:202, p:[-7, 7, 16],     g:[4, 0.4, 0] },
+    { t:212, p:[-13, 9.5, 20],  g:[3, 0.5, 0] },
+    { t:220, p:[-14, 10, 21],   g:[3, 0.5, 0] },
+  ],
+  // captions: {t, e, k(kicker), c(title)}
+  caps: [
+    { t:9,   e:22,  k:'The apparatus',  c:'A source fires light through two slits onto a screen' },
+    { t:22,  e:35,  k:'Your controls',  c:'Tune wavelength, slit spacing & distance — live' },
+    { t:35,  e:51,  k:'Wave mode',      c:'Light passes through BOTH slits at once' },
+    { t:51,  e:66,  k:'Interference',   c:'Crests add, troughs cancel — bright & dark bands' },
+    { t:66,  e:82,  k:'Particle mode',  c:'One photon at a time lands as a single random dot' },
+    { t:82,  e:100, k:'Stream',         c:'Thousands of “random” dots build the SAME stripes' },
+    { t:100, e:119, k:'The mystery',    c:'Each photon interferes with itself — both paths at once' },
+    { t:119, e:133, k:'The observer',   c:'Switch on the which-path detector — watch the slits' },
+    { t:133, e:143, k:'Observed',       c:'Know the path… and the interference dies' },
+    { t:143, e:160, k:'Unwatched',      c:'Stop looking — the wave returns' },
+    { t:160, e:180, k:'Explore',        c:'It’s all live — real physics in your browser' },
+    { t:180, e:202, k:'Duality',        c:'Wave and particle — two truths at once' },
+  ],
+  // full-screen cards: {t, e, kick, big, sub}
+  cards: [
+    { t:0,   e:9,   kick:'Interactive quantum experiment', big:'DOUBLE SLIT', sub:'wave · particle · the observer' },
+    { t:202, e:224, kick:'Explore it yourself', big:'DOUBLE SLIT', sub:'amotzalbert.github.io/doubleslit' },
+  ],
+  // param ramps: {t0,t1,id,from,to}
+  ramps: [
+    { t0:24, t1:31, id:'lam', from:550, to:462 },
+    { t0:31, t1:35, id:'d',   from:1.0, to:1.45 },
+    { t0:162, t1:172, id:'lam', from:462, to:638 },
+    { t0:170, t1:180, id:'d',   from:1.45, to:0.95 },
+  ],
+  // one-shot events: {t, fn}
+  events: [
+    { t:9,   fn:()=>{ setMode('wave'); setObserver(false,{silent:true}); state.showField=false; field.visible=false; document.getElementById('chipField').classList.remove('on'); } },
+    { t:22,  fn:()=>{ dsFlash('#lam'); dsFlash('#d'); } },
+    { t:35,  fn:()=>{ setMode('wave'); state.showField=true; field.visible=true; document.getElementById('chipField').classList.add('on'); dsFlash('#modeSeg button[data-mode="wave"]'); paintWaveScreen(); } },
+    { t:66,  fn:()=>{ softClear(); setMode('single'); setObserver(false,{silent:true}); dsFlash('#modeSeg button[data-mode="single"]'); fireBtnText('Fire one ▸'); } },
+    // single-photon volley
+    ...Array.from({length:16},(_,i)=>({ t:68 + i*0.78, fn:()=>{ if(state.mode==='single'){ recordHit(sampleX()); dsFlash('#fireBtn'); } } })),
+    { t:82,  fn:()=>{ setMode('stream'); setSlider('rate',190); streaming=true; fireBtnText('Stop ◼'); dsFlash('#modeSeg button[data-mode="stream"]'); } },
+    { t:100, fn:()=>{ setMode('stream'); streaming=true; setSlider('rate',150); } },
+    { t:119, fn:()=>{ softClear(); setMode('stream'); streaming=true; fireBtnText('Stop ◼'); setSlider('rate',210); setObserver(true); dsFlash('#obsToggle'); } },
+    { t:143, fn:()=>{ setObserver(false); softClear(); setMode('stream'); streaming=true; setSlider('rate',200); dsFlash('#obsToggle'); } },
+    { t:160, fn:()=>{ setMode('stream'); streaming=true; setSlider('rate',150); } },
+    { t:180, fn:()=>{ setMode('stream'); streaming=true; setSlider('rate',120); state.showField=true; field.visible=true; document.getElementById('chipField').classList.add('on'); } },
+    { t:202, fn:()=>{ streaming=false; fireBtnText('Start stream ▸'); } },
+  ],
+};
+
+// Glowing "light slot" highlighters that fill each slit opening so the two slits
+// read clearly in the early scenes (render-only — the live app never builds these).
+// They track state.d, so they visibly spread apart during the slit-separation sweep.
+let slitHL = null;
+function buildSlitHighlighters(){
+  slitHL = new THREE.Group();
+  const mk = ()=>{
+    const fill = new THREE.Mesh(
+      new THREE.BoxGeometry(0.07, SLIT_HEIGHT, 1),
+      new THREE.MeshBasicMaterial({ color:0x8fefff, transparent:true, opacity:0,
+                                    blending:THREE.AdditiveBlending, depthWrite:false }));
+    return fill;
+  };
+  const a = mk(), b = mk();
+  slitHL.add(a, b); slitHL.userData = { a, b };
+  const div = document.createElement('div');
+  div.className = 'label2d';
+  div.style.cssText = 'color:#8fefff;font-weight:700;letter-spacing:.04em;opacity:0;transition:none;text-shadow:0 0 12px rgba(143,239,255,.7)';
+  div.textContent = '▼  two slits  ▼';
+  const lbl = new CSS2DObject(div); lbl.position.set(0, SLIT_HEIGHT/2 + 1.6, 0);
+  slitHL.add(lbl); slitHL.userData.lbl = lbl;
+  scene.add(slitHL);
+}
+function updateSlitHL(s){
+  if(!slitHL) return;
+  const { a, b, lbl } = slitHL.userData;
+  a.scale.z = state.a; a.position.set(0, 0,  state.d/2);
+  b.scale.z = state.a; b.position.set(0, 0, -state.d/2);
+  // intensity envelope (shifted seconds): bloom in 5→9, hold through apparatus+controls,
+  // fade out 30→40 as the wave field takes over.
+  let inten = 0;
+  if(s>=5 && s<9)       inten = (s-5)/4;
+  else if(s>=9 && s<30) inten = 1;
+  else if(s>=30 && s<40) inten = (40-s)/10;
+  const pulse = 0.6 + 0.4*Math.sin(s*3.2);
+  const o = Math.max(0, inten) * pulse * 0.85;
+  a.material.opacity = o; b.material.opacity = o;
+  lbl.element.style.opacity = (s>=6 && s<23) ? Math.min(1, (s-6)/1.2) * (s<21?1:(23-s)/2) : 0;
+}
+
+const __ds = {
+  fired: new Set(),
+  SHIFT: 3.0,                        // play the whole timeline 3s earlier (lyric sync)
+  ready(){ return !!CDF; },          // physics CDF built → scene is renderable
+  start(){
+    document.body.classList.add('render');
+    TL.cam.sort((a,b)=>a.t-b.t);
+    TL.events.sort((a,b)=>a.t-b.t);
+    buildSlitHighlighters();
+  },
+  _smooth(t){ return t*t*(3-2*t); },
+  cameraAt(now){
+    const s = now/1000, K = TL.cam;
+    if(s<=K[0].t) return { pos:V(...K[0].p), tgt:V(...K[0].g) };
+    for(let i=0;i<K.length-1;i++){
+      if(s>=K[i].t && s<=K[i+1].t){
+        const u = this._smooth((s-K[i].t)/(K[i+1].t-K[i].t));
+        return {
+          pos:V(...K[i].p).lerp(V(...K[i+1].p), u),
+          tgt:V(...K[i].g).lerp(V(...K[i+1].g), u),
+        };
+      }
+    }
+    const L=K[K.length-1]; return { pos:V(...L.p), tgt:V(...L.g) };
+  },
+  _ramps(now){
+    const s = now/1000;
+    for(const r of TL.ramps){
+      if(s>=r.t0 && s<=r.t1){
+        const u=(s-r.t0)/(r.t1-r.t0);
+        setSlider(r.id, +(r.from + (r.to-r.from)*u).toFixed(r.id==='lam'?0:3));
+      }
+    }
+  },
+  _fade(s,t,e,fin,fout){
+    if(s<t || s>=e) return 0;
+    if(s < t+fin)  return (s-t)/fin;
+    if(s > e-fout) return Math.max(0,(e-s)/fout);
+    return 1;
+  },
+  _caps(now){
+    const s=now/1000;
+    const cap=document.getElementById('cineCap');
+    const card=document.getElementById('cineCard');
+    // deterministic, render-time-driven fades (no reliance on wall-clock CSS transitions)
+    cap.style.transition='none'; card.style.transition='none';
+    const curCard=TL.cards.find(c=>s>=c.t && s<c.e);
+    if(curCard){
+      if(card.dataset.k!==curCard.big+curCard.sub){
+        card.querySelector('.kick').textContent=curCard.kick;
+        card.querySelector('.big').textContent=curCard.big;
+        card.querySelector('.sub2').textContent=curCard.sub;
+        card.dataset.k=curCard.big+curCard.sub;
+      }
+      card.style.opacity=this._fade(s,curCard.t,curCard.e,0.7,0.8);
+    } else card.style.opacity=0;
+    const cur=TL.caps.find(c=>s>=c.t && s<c.e);
+    if(cur && !curCard){
+      if(cap.dataset.k!==cur.k){
+        cap.querySelector('.ck').textContent=cur.k;
+        cap.querySelector('.ct').textContent=cur.c;
+        cap.dataset.k=cur.k;
+      }
+      cap.style.opacity=this._fade(s,cur.t,cur.e,0.5,0.5);
+    } else cap.style.opacity=0;
+  },
+  tick(absMs){
+    if(this._last==null) this._last=absMs;
+    const dt = Math.min(0.05, (absMs-this._last)/1000); this._last=absMs;
+    const ST = absMs + this.SHIFT*1000;           // shifted timeline clock
+    for(const ev of TL.events){ if(ST/1000>=ev.t && !this.fired.has(ev)){ this.fired.add(ev); try{ ev.fn(); }catch(e){ console.warn('ev',e); } } }
+    this._ramps(ST);
+    this._caps(ST);
+    updateSlitHL(ST/1000);
+    frame(dt, ST);
+  },
+};
+window.__ds = __ds;
+
 // ============================================================= LOOP
 const fireBtnEl = document.getElementById('fireBtn');
 let last = performance.now(), streamAcc = 0;
-function tick(now){
-  const dt = Math.min(0.05, (now-last)/1000); last = now;
+function frame(dt, now){
 
   if(state.playing) fieldUniforms.uTime.value += dt;
 
@@ -1250,20 +1539,31 @@ function tick(now){
   beam.material.opacity = state.mode==='wave' ? 0.32 : 0.12;
 
   // camera animation
-  if(camAnim){
-    camAnim.t = Math.min(1, camAnim.t + dt*0.9);
-    const e = 1-Math.pow(1-camAnim.t,3);
-    camera.position.lerpVectors(camAnim.fromP, camAnim.toP, e);
-    controls.target.lerpVectors(camAnim.fromT, camAnim.toT, e);
-    if(camAnim.t>=1) camAnim=null;
+  if(RENDER){
+    const c = __ds.cameraAt(now);
+    camera.position.copy(c.pos);
+    controls.target.copy(c.tgt);
+    camera.lookAt(c.tgt);
+  } else {
+    if(camAnim){
+      camAnim.t = Math.min(1, camAnim.t + dt*0.9);
+      const e = 1-Math.pow(1-camAnim.t,3);
+      camera.position.lerpVectors(camAnim.fromP, camAnim.toP, e);
+      controls.target.lerpVectors(camAnim.fromT, camAnim.toT, e);
+      if(camAnim.t>=1) camAnim=null;
+    }
+    controls.update();
   }
 
   counterLabel.element.textContent = state.fired>0 ? `${state.fired.toLocaleString()} detected` : '';
 
-  controls.update();
   drawGraph();
   renderer.render(scene, camera);
   labelRenderer.render(scene, camera);
+}
+function tick(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  frame(dt, now);
   requestAnimationFrame(tick);
 }
 
@@ -1277,11 +1577,16 @@ addEventListener('resize', ()=>{
 recompute();
 setMode('wave');
 sizeGraph();
-// On entry, greet with the help window — it's the landing screen and offers the
-// walkthrough, the story tour, or "Got it" to dive in. The FABs sit ready behind it.
-fabsEl.style.display='flex';
-openHelp();
-requestAnimationFrame(tick);
+if(RENDER){
+  // Capture mode: Python drives __ds.tick(absMs) frame-by-frame. No live rAF, no chrome.
+  __ds.start();
+} else {
+  // On entry, greet with the help window — it's the landing screen and offers the
+  // walkthrough, the story tour, or "Got it" to dive in. The FABs sit ready behind it.
+  fabsEl.style.display='flex';
+  openHelp();
+  requestAnimationFrame(tick);
+}
 </script>
 </body>
 </html>
