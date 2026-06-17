@@ -866,8 +866,9 @@ function recompute(){            // call after any physics param change
 }
 
 // ---- panel controls
-function bindSlider(id, valId, fmt, setter){
+function bindSlider(id, valId, def, fmt, setter){
   const el = document.getElementById(id), out = document.getElementById(valId);
+  el.value = def;                       // force defined default (browsers restore old slider state on reload)
   const upd = ()=>{
     const v = parseFloat(el.value);
     el.style.setProperty('--fill', ((v-el.min)/(el.max-el.min)*100)+'%');
@@ -875,11 +876,11 @@ function bindSlider(id, valId, fmt, setter){
   };
   el.addEventListener('input', upd); upd();
 }
-bindSlider('lam','lamVal', v=>v+' nm', v=>{ state.lambdaNm=v; recompute(); });
-bindSlider('d','dVal', v=>v.toFixed(2), v=>{ state.d=v; recompute(); });
-bindSlider('a','aVal', v=>v.toFixed(3), v=>{ state.a=v; recompute(); });
-bindSlider('L','LVal', v=>v.toFixed(1), v=>{ state.L=v; recompute(); });
-bindSlider('rate','rateVal', v=>v+' / s', v=>{ state.rate=v; });
+bindSlider('lam','lamVal', state.lambdaNm, v=>v+' nm', v=>{ state.lambdaNm=v; recompute(); });
+bindSlider('d','dVal', state.d, v=>v.toFixed(2), v=>{ state.d=v; recompute(); });
+bindSlider('a','aVal', state.a, v=>v.toFixed(3), v=>{ state.a=v; recompute(); });
+bindSlider('L','LVal', state.L, v=>v.toFixed(1), v=>{ state.L=v; recompute(); });
+bindSlider('rate','rateVal', state.rate, v=>v+' / s', v=>{ state.rate=v; });
 
 const modeSeg = document.getElementById('modeSeg');
 modeSeg.addEventListener('click', e=>{
