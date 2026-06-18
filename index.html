@@ -962,7 +962,9 @@ function setMode(m){
   if(m==='single') fb.textContent='Fire one ▸';
   if(m==='stream') fb.textContent = streaming ? 'Stop ◼' : 'Start stream ▸';
   // field is the wave visualization; show strongly in wave mode
-  field.visible = state.showField && (m==='wave' || true);
+  // The wave-field ripple plane belongs to Wave mode only — in Particle/Stream it
+  // would overlap the wall and make the dot pattern look like it bleeds onto the floor.
+  field.visible = state.showField && m==='wave';
   refreshScreen();
 }
 
@@ -1026,7 +1028,7 @@ function bindChip(id, key, onChange){
   const el = document.getElementById(id);
   el.addEventListener('click', ()=>{ state[key]=!state[key]; el.classList.toggle('on', state[key]); onChange(); });
 }
-bindChip('chipField','showField', ()=>{ field.visible = state.showField; });
+bindChip('chipField','showField', ()=>{ field.visible = state.showField && state.mode==='wave'; });
 bindChip('chipTheory','showTheory', ()=>{});
 bindChip('chipPlay','playing', ()=>{ document.getElementById('chipPlay').textContent = state.playing?'Time ▶':'Time ⏸'; });
 bindChip('chipSound','sound', ()=>{ ensureAudio(); document.getElementById('chipSound').textContent = state.sound?'Sound ♪':'Muted'; });
