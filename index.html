@@ -440,7 +440,7 @@
   </div>
   <div class="ctl">
     <div class="row"><label>Slit width&nbsp;<i>a</i></label><span class="val" id="aVal">0.22</span></div>
-    <input type="range" id="a" min="0.08" max="0.55" step="0.005" value="0.22">
+    <input type="range" id="a" min="0.08" max="0.55" step="0.005" value="0.33">
   </div>
   <div class="ctl">
     <div class="row"><label>Screen distance&nbsp;<i>L</i></label><span class="val" id="LVal">10.0</span></div>
@@ -524,7 +524,7 @@ const state = {
   lambdaNm: 550,
   lambda: 0,        // scene-unit wavelength (set from nm)
   d: 1.0,
-  a: 0.22,
+  a: 0.33,
   L: 10,
   observer: false,
   rate: 60,
@@ -539,25 +539,19 @@ let actx=null, master=null, beamGain=null, beamFilter=null, lfoGain=null, noiseB
 const SCREEN_HALF = 6.5;   // physical half-extent sampled along x (screen z-range)
 const BEAM_HALF_Y = 1.9;   // vertical spread of arrivals
 
-function nmToScene(nm){ return nm / 2200; }            // ~0.18..0.32 scene units
+function nmToScene(nm){ return nm / 3700; }            // λ < slit width → realistic envelope
 function sinc(x){ return x === 0 ? 1 : Math.sin(x)/x; }
 
-function singleSlitEnv(pos, center){ // single-slit diffraction centred behind a slit
-  const rel = pos - center;
-  const sinT = rel / Math.sqrt(rel*rel + state.L*state.L);
-  const e = sinc(Math.PI * state.a * sinT / state.lambda);
-  return e*e;
-}
 function intensity(pos){ // pos = position on screen (the "x" in the formula)
-  if(state.observer){
-    // path known: incoherent sum of two single-slit patterns, one behind each slit.
-    // Close slits overlap into one hump; far slits separate into two clumps.
-    return 0.5*(singleSlitEnv(pos, state.d/2) + singleSlitEnv(pos, -state.d/2));
-  }
+  // Single-slit diffraction envelope — centred at 0, same for both slits (far field).
   const sinT = pos / Math.sqrt(pos*pos + state.L*state.L);
   const env = sinc(Math.PI * state.a * sinT / state.lambda);
+  const envSq = env*env;
+  // Which-path known → bare diffraction envelope (one central blob fading to the edges),
+  // no interference fringes. This is the true far-field result, not two clusters.
+  if(state.observer) return envSq;
   const inter = Math.cos(Math.PI * state.d * sinT / state.lambda);
-  return inter*inter * env*env;
+  return inter*inter * envSq;
 }
 
 // Inverse-CDF sampler, rebuilt only when physics params change.
@@ -881,10 +875,9 @@ function recordHit(x){
   state.fired++;
 
   // which-path: the particle definitively took one slit — spark that detector ring.
-  // Pick the slit weighted by its single-slit contribution at this landing spot.
+  // Both slits are identical in the far field, so the path is a 50/50 coin flip.
   if(state.observer){
-    const w1 = singleSlitEnv(x, state.d/2), w2 = singleSlitEnv(x, -state.d/2);
-    if(Math.random()*(w1+w2) < w1) ring1Flash = 1; else ring2Flash = 1;
+    if(Math.random() < 0.5) ring1Flash = 1; else ring2Flash = 1;
   }
 }
 function clearScreen(){          // instant wipe (the prominent Reset button)
