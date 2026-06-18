@@ -772,7 +772,13 @@ const HM_W = 600, HM_H = 240;
 const hmCanvas = document.createElement('canvas');
 hmCanvas.width = HM_W; hmCanvas.height = HM_H;
 const hmCtx = hmCanvas.getContext('2d');
-function clearHeatmap(){ hmCtx.clearRect(0,0,HM_W,HM_H); hmTex.needsUpdate = true; }
+const SCREEN_BASE = '#0a0d16';   // opaque panel colour so the screen isn't see-through
+function clearHeatmap(){
+  hmCtx.globalCompositeOperation = 'source-over';
+  hmCtx.fillStyle = SCREEN_BASE; hmCtx.fillRect(0,0,HM_W,HM_H);
+  hmCtx.globalCompositeOperation = 'lighter';
+  hmTex.needsUpdate = true;
+}
 const hmTex = new THREE.CanvasTexture(hmCanvas);
 // Wave mode: paint the continuous interference pattern directly on the screen.
 const wvCanvas = document.createElement('canvas');
@@ -793,7 +799,8 @@ function paintWaveScreen(){
   }
   wvTex.needsUpdate = true;
 }
-const screenMat = new THREE.MeshBasicMaterial({ map:hmTex, transparent:true });
+const screenMat = new THREE.MeshBasicMaterial({ map:hmTex });   // opaque — solid detection panel
+clearHeatmap();   // start with the dark panel base so the screen reads as solid
 function refreshScreen(){     // choose what the screen shows: wave pattern vs accumulated hits
   const wave = state.mode==='wave';
   screenMat.map = wave ? wvTex : hmTex;
@@ -1499,10 +1506,10 @@ function frame(dt, now){
   for(let i=0;i<MAX_PTS;i++){ if(ptAlpha[i]>0){ ptAlpha[i]=Math.max(0, ptAlpha[i]-dt*0.25); anyFade=true; } }
   if(anyFade){ ptGeo.attributes.aAlpha.needsUpdate=true; ptGeo.attributes.position.needsUpdate=true; }
 
-  // smooth screen dissolve (tour transitions) — accumulated heatmap melts away
+  // smooth screen dissolve (tour transitions) — hits melt back toward the panel base
   if(hmFade>0){
-    hmCtx.globalCompositeOperation='destination-out';
-    hmCtx.fillStyle='rgba(0,0,0,'+Math.min(0.5, dt*2.4)+')';
+    hmCtx.globalCompositeOperation='source-over';
+    hmCtx.fillStyle='rgba(10,13,22,'+Math.min(0.5, dt*2.4)+')';
     hmCtx.fillRect(0,0,HM_W,HM_H);
     hmCtx.globalCompositeOperation='lighter';
     hmTex.needsUpdate=true;
